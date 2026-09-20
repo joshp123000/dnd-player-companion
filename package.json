@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "import:spells": "node scripts/import-spells.mjs"
+    "import:spells": "node scripts/import-spells.mjs",
+    "import:class-features": "node scripts/import-class-features.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
