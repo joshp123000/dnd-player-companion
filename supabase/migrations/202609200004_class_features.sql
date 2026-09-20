@@ -10,6 +10,7 @@ alter table public.abilities add column if not exists feature_order integer not 
 alter table public.abilities add column if not exists is_system boolean not null default false;
 alter table public.abilities add column if not exists source_type text not null default 'custom';
 alter table public.abilities add column if not exists ability_kind text not null default 'custom';
+alter table public.abilities add column if not exists dm_edited boolean not null default false;
 alter table public.abilities alter column created_by drop not null;
 
 alter table public.character_abilities add column if not exists assignment_type text not null default 'dm_included';
@@ -101,7 +102,8 @@ on conflict (slug) do update set
   description = excluded.description,
   source = excluded.source,
   tags = excluded.tags,
-  updated_at = now();
+  updated_at = now()
+where not public.abilities.dm_edited;
 
 create or replace function public.sync_class_abilities(p_character_id uuid)
 returns void

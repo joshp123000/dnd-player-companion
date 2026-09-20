@@ -52,4 +52,10 @@ describe('AbilityCard', () => {
 
     expect(screen.getByText(/Prerequisite: Level 4\+; Spellcasting or Pact Magic feature · Repeatable/)).toBeInTheDocument()
   })
+
+  it('labels a generated card after a DM correction', () => {
+    render(<AbilityCard ability={{ ...ability, dm_edited: true }} />)
+
+    expect(screen.getByText('DM edited')).toBeInTheDocument()
+  })
 })

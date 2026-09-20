@@ -18,6 +18,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Separate spell, magic-item, and ability card tabs for both DMs and players
 - Spell search by name, level, class, and school, plus magic-item search by name, type, rarity, and tag
 - Duplicate any SRD spell into an independent editable homebrew version
+- Edit generated spell, class-feature, feat, and magic-item cards globally without breaking assignments or automatic unlock rules
 - Automatic class/level spell and cantrip limits for the 2024 core casters plus the 2025 Artificer
 - Per-character DM overrides for every automatic limit
 - Automatic class-feature assignments by class and level, with per-card DM hide/restore overrides

@@ -38,6 +38,7 @@ export function SpellCard({
             <strong>{spell.name}</strong>
             {badge && <span className="badge badge--accent">{badge}</span>}
             {spell.source_type === 'custom' && <span className="badge">Custom</span>}
+            {spell.dm_edited && <span className="badge">DM edited</span>}
           </span>
           <span className="content-card__subtitle">
             {spellLevelLabel(spell.level)} · {titleCase(spell.school)}

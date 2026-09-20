@@ -60,4 +60,10 @@ describe('SpellCard', () => {
     expect(screen.queryByText('Using a Higher-Level Slot')).not.toBeInTheDocument()
     expect(screen.queryByText('Stale slot text.')).not.toBeInTheDocument()
   })
+
+  it('labels a generated card after a DM correction', () => {
+    render(<SpellCard spell={{ ...spell, dm_edited: true }} />)
+
+    expect(screen.getByText('DM edited')).toBeInTheDocument()
+  })
 })

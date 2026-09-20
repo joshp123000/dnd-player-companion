@@ -70,6 +70,9 @@ export interface Spell {
   source_type: SpellSource
   source_label: string
   original_spell_id: string | null
+  dm_edited?: boolean
+  dm_edited_at?: string | null
+  dm_edited_by?: string | null
   created_by: string | null
   created_at: string
   updated_at: string
@@ -110,6 +113,9 @@ export interface Ability {
   item_type?: string | null
   item_rarity?: string | null
   attunement?: string | null
+  dm_edited?: boolean
+  dm_edited_at?: string | null
+  dm_edited_by?: string | null
   created_by: string | null
   created_at: string
   updated_at: string

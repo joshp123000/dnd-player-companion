@@ -48,4 +48,5 @@ on conflict (slug) do update set
   higher_level = excluded.higher_level,
   cantrip_upgrade = excluded.cantrip_upgrade,
   source_label = excluded.source_label,
-  updated_at = now();
+  updated_at = now()
+where not public.spells.dm_edited;

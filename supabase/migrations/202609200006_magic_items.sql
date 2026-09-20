@@ -7,6 +7,7 @@ begin;
 alter table public.abilities add column if not exists item_type text;
 alter table public.abilities add column if not exists item_rarity text;
 alter table public.abilities add column if not exists attunement text;
+alter table public.abilities add column if not exists dm_edited boolean not null default false;
 
 alter table public.abilities drop constraint if exists abilities_system_metadata_check;
 alter table public.abilities drop constraint if exists abilities_kind_check;
@@ -110,6 +111,7 @@ on conflict (slug) do update set
   item_type = excluded.item_type,
   item_rarity = excluded.item_rarity,
   attunement = excluded.attunement,
-  updated_at = now();
+  updated_at = now()
+where not public.abilities.dm_edited;
 
 commit;

@@ -457,9 +457,9 @@ export function DmDashboard({
 
   const saveSpell = async (input: SpellInput) => {
     if (editor?.kind !== 'spell') return
-    const isEdit = Boolean(editor.spell && !editor.duplicate && editor.spell.source_type === 'custom')
+    const isEdit = Boolean(editor.spell && !editor.duplicate)
     await act(async () => {
-      if (isEdit && editor.spell) await updateSpell(editor.spell.id, input)
+      if (isEdit && editor.spell) await updateSpell(editor.spell, input)
       else await createSpell(input)
     }, isEdit ? `${input.name} updated.` : `${input.name} created.`)
   }
@@ -468,7 +468,7 @@ export function DmDashboard({
     if (editor?.kind !== 'ability') return
     const isEdit = Boolean(editor.ability)
     await act(async () => {
-      if (editor.ability) await updateAbility(editor.ability.id, input)
+      if (editor.ability) await updateAbility(editor.ability, input)
       else await createAbility(input)
     }, isEdit ? `${input.name} updated.` : `${input.name} created.`)
   }
@@ -645,7 +645,7 @@ export function DmDashboard({
                       secondaryAction={
                         <div className="card-action-group">
                           <Button variant="ghost" onClick={() => setEditor({ kind: 'spell', spell, duplicate: true })}><BookCopy size={16} /> Duplicate</Button>
-                          {spell.source_type === 'custom' && <Button variant="ghost" onClick={() => setEditor({ kind: 'spell', spell })}><Edit3 size={16} /> Edit</Button>}
+                          <Button variant="ghost" onClick={() => setEditor({ kind: 'spell', spell })}><Edit3 size={16} /> Edit</Button>
                           {spell.source_type === 'custom' && <Button variant="ghost" className="danger-text" onClick={() => {
                             if (window.confirm(`Delete the custom spell ${spell.name}?`)) void act(() => deleteSpell(spell.id), `${spell.name} deleted.`, false)
                           }}><Trash2 size={16} /></Button>}
@@ -717,6 +717,7 @@ export function DmDashboard({
                       item={item}
                       key={item.id}
                       badge={assigned ? `Assigned to ${selectedCharacter?.name}` : undefined}
+                      secondaryAction={<Button variant="ghost" onClick={() => setEditor({ kind: 'ability', ability: item })}><Edit3 size={16} /> Edit</Button>}
                       action={<Button variant={assigned ? 'secondary' : 'primary'} disabled={!selectedCharacter || busy} onClick={() => selectedCharacter && void act(
                         () => setAbilityAssignment(selectedCharacter.id, item.id, !assigned),
                         assigned ? `${item.name} removed from ${selectedCharacter.name}.` : `${item.name} assigned to ${selectedCharacter.name}.`,
@@ -768,7 +769,7 @@ export function DmDashboard({
                     ability={ability}
                     key={ability.id}
                     badge={assignmentBadge}
-                    secondaryAction={ability.is_system ? undefined : <div className="card-action-group"><Button variant="ghost" onClick={() => setEditor({ kind: 'ability', ability })}><Edit3 size={16} /> Edit</Button><Button variant="ghost" className="danger-text" onClick={() => { if (window.confirm(`Delete ${ability.name}?`)) void act(() => deleteAbility(ability.id), `${ability.name} deleted.`, false) }}><Trash2 size={16} /></Button></div>}
+                    secondaryAction={<div className="card-action-group"><Button variant="ghost" onClick={() => setEditor({ kind: 'ability', ability })}><Edit3 size={16} /> Edit</Button>{!ability.is_system && <Button variant="ghost" className="danger-text" onClick={() => { if (window.confirm(`Delete ${ability.name}?`)) void act(() => deleteAbility(ability.id), `${ability.name} deleted.`, false) }}><Trash2 size={16} /></Button>}</div>}
                     action={<Button variant={nextEnabled ? 'primary' : 'secondary'} disabled={!selectedCharacter || busy} onClick={() => selectedCharacter && void act(
                       () => setAbilityAssignment(selectedCharacter.id, ability.id, nextEnabled),
                       nextEnabled ? `${ability.name} shown to ${selectedCharacter.name}.` : `${ability.name} hidden from ${selectedCharacter.name}.`,
@@ -804,8 +805,8 @@ export function DmDashboard({
           />
         </Modal>
       )}
-      {editor?.kind === 'spell' && <Modal title={editor.duplicate ? `Duplicate ${editor.spell?.name}` : editor.spell ? `Edit ${editor.spell.name}` : 'Create a custom spell'} description={editor.duplicate ? 'This creates a separate homebrew copy; the SRD original remains unchanged.' : 'Fill in the fields and the app will generate the player card.'} onClose={() => setEditor(null)} wide><SpellEditor key={`${editor.spell?.id ?? 'new'}-${editor.duplicate ? 'copy' : 'edit'}`} spell={editor.spell} duplicate={editor.duplicate} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveSpell(input)} /></Modal>}
-      {editor?.kind === 'ability' && <Modal title={editor.ability ? `Edit ${editor.ability.name}` : 'Create an ability card'} description="Use this for a homebrew feature, feat, trait, or other custom ability." onClose={() => setEditor(null)} wide><AbilityEditor key={editor.ability?.id ?? 'new'} ability={editor.ability} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveAbility(input)} /></Modal>}
+      {editor?.kind === 'spell' && <Modal title={editor.duplicate ? `Duplicate ${editor.spell?.name}` : editor.spell ? `Edit ${editor.spell.name}` : 'Create a custom spell'} description={editor.duplicate ? 'This creates a separate homebrew copy; the original remains unchanged.' : editor.spell ? 'This changes the shared card for every campaign and player who can see it. Existing assignments stay in place.' : 'Fill in the fields and the app will generate the player card.'} onClose={() => setEditor(null)} wide><SpellEditor key={`${editor.spell?.id ?? 'new'}-${editor.duplicate ? 'copy' : 'edit'}`} spell={editor.spell} duplicate={editor.duplicate} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveSpell(input)} /></Modal>}
+      {editor?.kind === 'ability' && <Modal title={editor.ability ? `Edit ${editor.ability.name}` : 'Create an ability card'} description={editor.ability ? 'This changes the shared card for every campaign and assigned player. Automatic class and level unlock rules stay protected.' : 'Use this for a homebrew feature, feat, trait, or other custom ability.'} onClose={() => setEditor(null)} wide><AbilityEditor key={editor.ability?.id ?? 'new'} ability={editor.ability} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveAbility(input)} /></Modal>}
       {editor?.kind === 'assign-spell' && selectedCharacter && <Modal title="Assign spell" onClose={() => setEditor(null)}><AssignmentForm spell={editor.spell} character={selectedCharacter} busy={busy} onCancel={() => setEditor(null)} onSubmit={(prepared, alwaysPrepared) => void act(() => assignSpell(selectedCharacter.id, editor.spell.id, { prepared, alwaysPrepared }), `${editor.spell.name} assigned to ${selectedCharacter.name}.`)} /></Modal>}
     </div>
   )

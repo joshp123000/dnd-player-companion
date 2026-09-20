@@ -6,6 +6,7 @@ begin;
 alter table public.abilities add column if not exists ability_kind text not null default 'custom';
 alter table public.abilities add column if not exists prerequisite text;
 alter table public.abilities add column if not exists repeatable boolean not null default false;
+alter table public.abilities add column if not exists dm_edited boolean not null default false;
 
 update public.abilities
 set ability_kind = case when is_system then 'class_feature' else 'custom' end
@@ -96,7 +97,8 @@ on conflict (slug) do update set
   repeatable = excluded.repeatable,
   source = excluded.source,
   tags = excluded.tags,
-  updated_at = now();
+  updated_at = now()
+where not public.abilities.dm_edited;
 
 create or replace function public.dm_set_ability_override(
   p_character_id uuid,

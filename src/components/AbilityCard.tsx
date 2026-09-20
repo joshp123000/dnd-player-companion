@@ -46,6 +46,7 @@ export function AbilityCard({
             <strong>{ability.name}</strong>
             <span className="badge">{ability.category}</span>
             {badge && <span className="badge badge--accent">{badge}</span>}
+            {ability.dm_edited && <span className="badge">DM edited</span>}
           </span>
           <span className="content-card__subtitle">
             {details || 'Passive ability'}

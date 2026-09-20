@@ -15,13 +15,14 @@ You only need to do the Supabase setup once. After that, changes pushed to `main
    5. `supabase/migrations/202609200004_class_features.sql`
    6. `supabase/migrations/202609200005_phb_feats.sql`
    7. `supabase/migrations/202609200006_magic_items.sql`
-   8. `supabase/seed.sql`
+   8. `supabase/migrations/202609200007_dm_card_edits.sql`
+   9. `supabase/seed.sql`
 
 The magic-item migration imports all 258 SRD 5.2.1 items. The final script imports all 339 SRD spells. Both update built-in records without replacing custom cards or changing assignment IDs.
 
 ### Existing installations
 
-For an existing installation that already has the feat cards, run only `supabase/migrations/202609200006_magic_items.sql` to add the magic-item library and tab data. If it does not yet have feats, run `202609200005_phb_feats.sql` first. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
+For an existing installation that already has the magic-item catalog, run `supabase/migrations/202609200007_dm_card_edits.sql` to enable editing generated cards. If it is missing magic items or feats, run `202609200005_phb_feats.sql` and `202609200006_magic_items.sql` first as needed. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
 
 ## 2. Create the first DM account
 
@@ -92,6 +93,7 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Choose **Feats only** to browse all 75 Player’s Handbook feats. Each card shows its prerequisite and whether it is repeatable; use **Add** or **Remove** for the selected character.
 - Open **Magic items** to search the 258-item SRD catalog by name, type, or rarity. Choose a character and use **Assign** or **Remove**; the same item can be assigned to any number of characters.
 - Players see their assigned items in their own **Magic items** tab and alongside their other cards under **All cards**.
+- Use **Edit** on any spell, class feature, feat, magic item, or custom card to correct its shared card text. Changes appear in every campaign, existing assignments stay in place, and generated cards receive a **DM edited** badge. Automatic class and level metadata remains protected.
 - Use overrides for feats, multiclassing, house rules, or unusual rewards.
 - Turn on **Preparation unlocked** after a long rest for Artificers, Clerics, Druids, Paladins, and Wizards.
 - For Bards, Rangers, Sorcerers, and Warlocks, assign their chosen spells with **Selected/prepared now** turned on so the cards appear immediately.
@@ -120,7 +122,7 @@ The imported source is pinned in `scripts/import-spells.mjs`. To refresh it:
 npm run import:spells
 ```
 
-Review the generated changes to `public/data/spells.json` and `supabase/seed.sql`, run the seed against Supabase, then commit the updated files.
+Review the generated changes to `public/data/spells.json` and `supabase/seed.sql`, run the seed against Supabase, then commit the updated files. Catalog refreshes leave cards marked **DM edited** unchanged.
 
 ## Updating the magic-item source
 
@@ -130,4 +132,4 @@ The SRD 5.2.1 Markdown conversion is pinned in `scripts/import-magic-items.mjs`.
 npm run import:magic-items
 ```
 
-Review `src/data/magic-items.json` and `supabase/migrations/202609200006_magic_items.sql`, then run the migration against Supabase. The importer validates the expected 258 entries before writing either file.
+Review `src/data/magic-items.json` and `supabase/migrations/202609200006_magic_items.sql`, then run the migration against Supabase. The importer validates the expected 258 entries before writing either file and leaves cards marked **DM edited** unchanged.

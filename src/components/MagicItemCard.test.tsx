@@ -43,4 +43,11 @@ describe('MagicItemCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /Ring of Protection/ }))
     expect(screen.getByText(/Armor Class and saving throws/)).toBeInTheDocument()
   })
+
+  it('shows the edit marker and secondary action', () => {
+    render(<MagicItemCard item={{ ...item, dm_edited: true }} secondaryAction={<button type="button">Edit</button>} />)
+
+    expect(screen.getByText('DM edited')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  })
 })

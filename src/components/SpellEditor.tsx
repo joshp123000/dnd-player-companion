@@ -2,32 +2,12 @@ import { useState, type FormEvent } from 'react'
 import type { Spell } from '../types'
 import type { SpellInput } from '../lib/api'
 import { SPELLCASTING_CLASSES, classLabel } from '../lib/rules'
+import { spellInputFromSpell } from '../lib/spellEditing'
 import { advancementFieldsForLevel } from '../lib/spellAdvancement'
 import { Button, Field, Input, Select } from './ui'
 
 const COMPONENTS = ['v', 's', 'm']
 const SCHOOLS = ['abjuration', 'conjuration', 'divination', 'enchantment', 'evocation', 'illusion', 'necromancy', 'transmutation']
-
-const fromSpell = (spell?: Spell | null): SpellInput => ({
-  name: spell ? `${spell.name}${spell.source_type === 'srd' ? ' (Custom)' : ''}` : '',
-  level: spell?.level ?? 0,
-  school: spell?.school ?? 'evocation',
-  classes: spell?.classes ?? [],
-  action_type: spell?.action_type ?? 'action',
-  casting_time: spell?.casting_time ?? null,
-  casting_trigger: spell?.casting_trigger ?? null,
-  range: spell?.range ?? 'Self',
-  components: spell?.components ?? [],
-  material: spell?.material ?? null,
-  duration: spell?.duration ?? 'Instantaneous',
-  concentration: spell?.concentration ?? false,
-  ritual: spell?.ritual ?? false,
-  description: spell?.description ?? '',
-  higher_level: spell?.higher_level ?? null,
-  cantrip_upgrade: spell?.cantrip_upgrade ?? null,
-  source_label: spell?.source_type === 'custom' ? spell.source_label : 'Homebrew',
-  original_spell_id: spell?.source_type === 'srd' ? spell.id : spell?.original_spell_id ?? null,
-})
 
 export function SpellEditor({
   spell,
@@ -42,7 +22,7 @@ export function SpellEditor({
   onSubmit: (input: SpellInput) => void
   onCancel: () => void
 }) {
-  const [form, setForm] = useState<SpellInput>(() => fromSpell(duplicate ? spell : spell))
+  const [form, setForm] = useState<SpellInput>(() => spellInputFromSpell(spell, duplicate))
 
   const setText = (key: keyof SpellInput, value: string) =>
     setForm((current) => ({ ...current, [key]: value.trimStart() || null }))

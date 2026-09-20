@@ -9,11 +9,13 @@ export function MagicItemCard({
   note,
   badge,
   action,
+  secondaryAction,
 }: {
   item: Ability
   note?: string | null
   badge?: string
   action?: ReactNode
+  secondaryAction?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const details = [
@@ -36,6 +38,7 @@ export function MagicItemCard({
             <strong>{item.name}</strong>
             {item.item_rarity && <span className="badge">{item.item_rarity}</span>}
             {badge && <span className="badge badge--accent">{badge}</span>}
+            {item.dm_edited && <span className="badge">DM edited</span>}
           </span>
           <span className="content-card__subtitle">{details || 'Magic item'}</span>
         </span>
@@ -58,7 +61,12 @@ export function MagicItemCard({
         </div>
       )}
 
-      {action && <footer className="content-card__actions">{action}</footer>}
+      {(action || secondaryAction) && (
+        <footer className="content-card__actions">
+          {secondaryAction}
+          {action}
+        </footer>
+      )}
     </article>
   )
 }

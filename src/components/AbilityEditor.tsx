@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import type { Ability } from '../types'
 import type { AbilityInput } from '../lib/api'
-import { Button, Field, Input } from './ui'
+import { MAGIC_ITEM_RARITIES } from '../lib/magicItems'
+import { Button, Field, Input, Select } from './ui'
 
 const fromAbility = (ability?: Ability | null): AbilityInput => ({
   name: ability?.name ?? '',
@@ -11,8 +12,13 @@ const fromAbility = (ability?: Ability | null): AbilityInput => ({
   recharge: ability?.recharge ?? null,
   summary: ability?.summary ?? null,
   description: ability?.description ?? '',
+  prerequisite: ability?.prerequisite ?? null,
+  repeatable: ability?.repeatable ?? false,
   source: ability?.source ?? null,
   tags: ability?.tags ?? [],
+  item_type: ability?.item_type ?? null,
+  item_rarity: ability?.item_rarity ?? null,
+  attunement: ability?.attunement ?? null,
 })
 
 export function AbilityEditor({
@@ -49,6 +55,24 @@ export function AbilityEditor({
       <Field label="Full description" hint="Markdown is supported.">
         <textarea className="textarea textarea--large" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required />
       </Field>
+      {ability?.ability_kind === 'feat' && (
+        <div className="form-grid form-grid--2">
+          <Field label="Prerequisite"><Input value={form.prerequisite ?? ''} onChange={(event) => setForm({ ...form, prerequisite: nullable(event.target.value) })} placeholder="Level 4+; Strength 13+" /></Field>
+          <label className="switch-row"><span><strong>Repeatable feat</strong><small>A character may choose this feat more than once.</small></span><input type="checkbox" checked={form.repeatable} onChange={(event) => setForm({ ...form, repeatable: event.target.checked })} /></label>
+        </div>
+      )}
+      {ability?.ability_kind === 'magic_item' && (
+        <div className="form-grid form-grid--3">
+          <Field label="Item type"><Input value={form.item_type ?? ''} onChange={(event) => setForm({ ...form, item_type: nullable(event.target.value) })} placeholder="Wondrous Item" required /></Field>
+          <Field label="Rarity">
+            <Select value={form.item_rarity ?? ''} onChange={(event) => setForm({ ...form, item_rarity: nullable(event.target.value) })} required>
+              <option value="">Choose rarity</option>
+              {MAGIC_ITEM_RARITIES.map((rarity) => <option value={rarity} key={rarity}>{rarity}</option>)}
+            </Select>
+          </Field>
+          <Field label="Attunement"><Input value={form.attunement ?? ''} onChange={(event) => setForm({ ...form, attunement: nullable(event.target.value) })} placeholder="Requires Attunement" /></Field>
+        </div>
+      )}
       <div className="form-grid form-grid--2">
         <Field label="Source"><Input value={form.source ?? ''} onChange={(event) => setForm({ ...form, source: nullable(event.target.value) })} placeholder="Fighter level 1" /></Field>
         <Field label="Tags" hint="Comma-separated"><Input value={form.tags.join(', ')} onChange={(event) => setForm({ ...form, tags: event.target.value.split(',').map((tag) => tag.trim()).filter(Boolean) })} placeholder="healing, class feature" /></Field>

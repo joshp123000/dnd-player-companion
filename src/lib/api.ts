@@ -63,8 +63,13 @@ export interface AbilityInput {
   recharge: string | null
   summary: string | null
   description: string
+  prerequisite: string | null
+  repeatable: boolean
   source: string | null
   tags: string[]
+  item_type: string | null
+  item_rarity: string | null
+  attunement: string | null
 }
 
 export const signIn = async (identifier: string, password: string): Promise<Session> => {
@@ -338,17 +343,27 @@ export const createSpell = async (input: SpellInput): Promise<Spell> => {
   return data as Spell
 }
 
-export const updateSpell = async (spellId: string, input: SpellInput): Promise<Spell> => {
+export const updateSpell = async (
+  spell: Pick<Spell, 'id' | 'source_type'>,
+  input: SpellInput,
+): Promise<void> => {
   const advancement = advancementFieldsForLevel(input.level, input.higher_level, input.cantrip_upgrade)
-  const { data, error } = await requireSupabase()
+  const client = requireSupabase()
+  if (spell.source_type === 'srd') {
+    const { error } = await client.rpc('dm_update_generated_spell', {
+      p_spell_id: spell.id,
+      p_card: { ...input, ...advancement },
+    })
+    if (error) throw error
+    return
+  }
+
+  const { error } = await client
     .from('spells')
     .update({ ...input, ...advancement })
-    .eq('id', spellId)
+    .eq('id', spell.id)
     .eq('source_type', 'custom')
-    .select('*')
-    .single()
   if (error) throw error
-  return data as Spell
 }
 
 export const deleteSpell = async (spellId: string) => {
@@ -430,15 +445,26 @@ export const createAbility = async (input: AbilityInput): Promise<Ability> => {
   return data as Ability
 }
 
-export const updateAbility = async (abilityId: string, input: AbilityInput): Promise<Ability> => {
-  const { data, error } = await requireSupabase()
+export const updateAbility = async (
+  ability: Pick<Ability, 'id' | 'is_system'>,
+  input: AbilityInput,
+): Promise<void> => {
+  const client = requireSupabase()
+  if (ability.is_system) {
+    const { error } = await client.rpc('dm_update_generated_ability', {
+      p_ability_id: ability.id,
+      p_card: input,
+    })
+    if (error) throw error
+    return
+  }
+
+  const { error } = await client
     .from('abilities')
     .update(input)
-    .eq('id', abilityId)
-    .select('*')
-    .single()
+    .eq('id', ability.id)
+    .eq('is_system', false)
   if (error) throw error
-  return data as Ability
 }
 
 export const deleteAbility = async (abilityId: string) => {
