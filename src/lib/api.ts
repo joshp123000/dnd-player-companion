@@ -13,7 +13,7 @@ import type {
 } from '../types'
 import { loginIdentifierToEmail, normalizeUsername, usernameToEmail } from './auth'
 import { advancementFieldsForLevel } from './spellAdvancement'
-import { alwaysPreparedPatch } from './spellAssignments'
+import { alwaysPreparedPatch, type SpellAssignmentState } from './spellAssignments'
 import { requireSupabase } from './supabase'
 import type { ThemeKey } from './themes'
 
@@ -47,10 +47,7 @@ export interface SpellInput {
   original_spell_id?: string | null
 }
 
-export interface SpellAssignmentSummary {
-  spell_id: string
-  always_prepared: boolean
-}
+export type SpellAssignmentSummary = SpellAssignmentState
 
 export interface AbilityAssignmentSummary {
   ability_id: string
@@ -465,12 +462,15 @@ export const setAbilityAssignment = async (
 export const listCharacterSpellAssignments = async (characterId: string): Promise<SpellAssignmentSummary[]> => {
   const { data, error } = await requireSupabase()
     .from('character_spells')
-    .select('spell_id, always_prepared')
+    .select('spell_id, in_collection, is_prepared, always_prepared, assigned_by_dm')
     .eq('character_id', characterId)
   if (error) throw error
   return (data ?? []).map((row) => ({
     spell_id: String(row.spell_id),
+    in_collection: Boolean(row.in_collection),
+    is_prepared: Boolean(row.is_prepared),
     always_prepared: Boolean(row.always_prepared),
+    assigned_by_dm: Boolean(row.assigned_by_dm),
   }))
 }
 

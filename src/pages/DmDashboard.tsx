@@ -53,6 +53,7 @@ import {
   updateSpellAlwaysPrepared,
   type AbilityAssignmentSummary,
   type AbilityInput,
+  type SpellAssignmentSummary,
   type SpellInput,
 } from '../lib/api'
 import { canDeleteCampaign, charactersForCampaign, cleanCampaignName } from '../lib/campaigns'
@@ -60,6 +61,7 @@ import { friendlyError, initials } from '../lib/format'
 import { filterSpells } from '../lib/filter'
 import { filterMagicItems, MAGIC_ITEM_RARITIES, magicItemCategories } from '../lib/magicItems'
 import { CHARACTER_CLASSES, classLabel } from '../lib/rules'
+import { dmSpellStatusLabel, matchesDmSpellView, type DmSpellView } from '../lib/spellAssignments'
 import type { Ability, Campaign, Character, MagicItemFilters, Spell, SpellFilters as FilterValues } from '../types'
 
 type DmTab = 'players' | 'spells' | 'items' | 'abilities'
@@ -247,10 +249,10 @@ export function DmDashboard({
   const [abilities, setAbilities] = useState<Ability[]>([])
   const [selectedCampaignId, setSelectedCampaignId] = useState('')
   const [selectedCharacterId, setSelectedCharacterId] = useState('')
-  const [assignedSpellIds, setAssignedSpellIds] = useState<Set<string>>(new Set())
-  const [alwaysPreparedSpellIds, setAlwaysPreparedSpellIds] = useState<Set<string>>(new Set())
+  const [spellAssignments, setSpellAssignments] = useState<Map<string, SpellAssignmentSummary>>(new Map())
   const [abilityAssignments, setAbilityAssignments] = useState<Map<string, AbilityAssignmentSummary>>(new Map())
   const [filters, setFilters] = useState<FilterValues>(initialFilters)
+  const [spellView, setSpellView] = useState<DmSpellView>('all')
   const [abilitySearch, setAbilitySearch] = useState('')
   const [abilityClassFilter, setAbilityClassFilter] = useState('selected')
   const [magicItemFilters, setMagicItemFilters] = useState<MagicItemFilters>(initialMagicItemFilters)
@@ -304,8 +306,7 @@ export function DmDashboard({
 
   const loadAssignments = useCallback(async (characterId: string) => {
     if (!characterId) {
-      setAssignedSpellIds(new Set())
-      setAlwaysPreparedSpellIds(new Set())
+      setSpellAssignments(new Map())
       setAbilityAssignments(new Map())
       return
     }
@@ -314,11 +315,8 @@ export function DmDashboard({
         listCharacterSpellAssignments(characterId),
         listCharacterAbilityAssignments(characterId),
       ])
-      setAssignedSpellIds(new Set(spellAssignments.map((assignment) => assignment.spell_id)))
-      setAlwaysPreparedSpellIds(new Set(
-        spellAssignments
-          .filter((assignment) => assignment.always_prepared)
-          .map((assignment) => assignment.spell_id),
+      setSpellAssignments(new Map(
+        spellAssignments.map((assignment) => [assignment.spell_id, assignment]),
       ))
       setAbilityAssignments(new Map(
         abilityRows.map((assignment) => [assignment.ability_id, assignment]),
@@ -337,8 +335,16 @@ export function DmDashboard({
     )
   }, [campaignCharacters])
   useEffect(() => { void loadAssignments(selectedCharacterId) }, [loadAssignments, selectedCharacterId])
+  useEffect(() => {
+    if (spellView === 'spellbook' && selectedCharacter?.class_key !== 'wizard') setSpellView('assigned')
+  }, [selectedCharacter?.class_key, spellView])
 
-  const filteredSpells = useMemo(() => filterSpells(spells, filters), [spells, filters])
+  const filteredSpells = useMemo(() => {
+    const isWizard = selectedCharacter?.class_key === 'wizard'
+    return filterSpells(spells, filters).filter((spell) => (
+      matchesDmSpellView(spellAssignments.get(spell.id), spellView, isWizard)
+    ))
+  }, [spells, filters, selectedCharacter?.class_key, spellAssignments, spellView])
   const magicItems = useMemo(
     () => abilities.filter((ability) => ability.ability_kind === 'magic_item'),
     [abilities],
@@ -368,6 +374,8 @@ export function DmDashboard({
   }, [nonMagicAbilities, abilityClassFilter, abilitySearch, selectedCharacter?.class_key])
   const assignedAbilityCount = nonMagicAbilities.filter((ability) => assignedAbilityIds.has(ability.id)).length
   const assignedMagicItemCount = magicItems.filter((item) => assignedAbilityIds.has(item.id)).length
+  const assignedSpellCount = [...spellAssignments.values()].filter((assignment) => assignment.in_collection).length
+  const preparedSpellCount = [...spellAssignments.values()].filter((assignment) => assignment.is_prepared).length
 
   const act = async (operation: () => Promise<void>, success: string, close = true) => {
     setBusy(true)
@@ -470,10 +478,16 @@ export function DmDashboard({
     setBusy(true)
     try {
       await updateSpellAlwaysPrepared(selectedCharacter.id, spell.id, alwaysPrepared)
-      setAlwaysPreparedSpellIds((current) => {
-        const next = new Set(current)
-        if (alwaysPrepared) next.add(spell.id)
-        else next.delete(spell.id)
+      setSpellAssignments((current) => {
+        const next = new Map(current)
+        const assignment = next.get(spell.id)
+        if (assignment) {
+          next.set(spell.id, {
+            ...assignment,
+            always_prepared: alwaysPrepared,
+            is_prepared: alwaysPrepared ? true : assignment.is_prepared,
+          })
+        }
         return next
       })
       onSuccess(alwaysPrepared
@@ -593,20 +607,41 @@ export function DmDashboard({
             <Button onClick={() => setEditor({ kind: 'spell' })}><Plus size={18} /> Custom spell</Button>
           </div>
           <SpellFilters value={filters} onChange={(value) => { setFilters(value); setVisibleSpells(40) }} />
-          <div className="library-summary"><span>{filteredSpells.length} matching spells</span><span>{assignedSpellIds.size} assigned to {selectedCharacter?.name ?? 'no player'}</span></div>
+          <div className="spell-player-filter">
+            <label>
+              <span>Show for {selectedCharacter?.name ?? 'selected player'}</span>
+              <Select
+                aria-label="Filter by player spell status"
+                value={spellView}
+                disabled={!selectedCharacter}
+                onChange={(event) => { setSpellView(event.target.value as DmSpellView); setVisibleSpells(40) }}
+              >
+                <option value="all">Every spell in the library</option>
+                <option value="assigned">On this character</option>
+                <option value="prepared">Prepared or selected now</option>
+                <option value="always">Always prepared</option>
+                <option value="unprepared">Assigned but not active</option>
+                {selectedCharacter?.class_key === 'wizard' && <option value="spellbook">Wizard spellbook</option>}
+              </Select>
+            </label>
+            {selectedCharacter && <span>{assignedSpellCount} on character · {preparedSpellCount} currently active</span>}
+          </div>
+          <div className="library-summary"><span>{filteredSpells.length} matching spells</span><span>{assignedSpellCount} assigned to {selectedCharacter?.name ?? 'no player'}</span></div>
           {filteredSpells.length === 0 ? (
-            <EmptyState icon={<BookOpenText />} title="No matching spells" message="Change the filters or create a custom spell." />
+            <EmptyState icon={<BookOpenText />} title="No matching spells" message="Change the spell filters or the selected player view." />
           ) : (
             <>
               <div className="card-grid">
                 {filteredSpells.slice(0, visibleSpells).map((spell) => {
-                  const assigned = assignedSpellIds.has(spell.id)
-                  const alwaysPrepared = alwaysPreparedSpellIds.has(spell.id)
+                  const assignment = spellAssignments.get(spell.id)
+                  const assigned = Boolean(assignment?.in_collection)
+                  const alwaysPrepared = Boolean(assignment?.always_prepared)
+                  const status = dmSpellStatusLabel(assignment, selectedCharacter?.class_key === 'wizard')
                   return (
                     <SpellCard
                       key={spell.id}
                       spell={spell}
-                      badge={assigned ? `${alwaysPrepared ? 'Always prepared' : 'Assigned'} for ${selectedCharacter?.name}` : undefined}
+                      badge={status && selectedCharacter ? `${status} · ${selectedCharacter.name}` : undefined}
                       secondaryAction={
                         <div className="card-action-group">
                           <Button variant="ghost" onClick={() => setEditor({ kind: 'spell', spell, duplicate: true })}><BookCopy size={16} /> Duplicate</Button>
