@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1600 1000" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="jungle-ground" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#203b2a"/>
+      <stop offset=".12" stop-color="#58704a"/>
+      <stop offset=".27" stop-color="#c3b989"/>
+      <stop offset=".5" stop-color="#e7dec1"/>
+      <stop offset=".73" stop-color="#c6ba88"/>
+      <stop offset=".88" stop-color="#5b734a"/>
+      <stop offset="1" stop-color="#203a29"/>
+    </linearGradient>
+    <radialGradient id="sunlit-clearing" cx="50%" cy="40%" r="58%">
+      <stop offset="0" stop-color="#f1e9cf" stop-opacity=".94"/>
+      <stop offset=".58" stop-color="#e0d5af" stop-opacity=".62"/>
+      <stop offset="1" stop-color="#867d54" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="leaf-light" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#66854c"/>
+      <stop offset="1" stop-color="#294f35"/>
+    </linearGradient>
+    <linearGradient id="leaf-dark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#365e3b"/>
+      <stop offset="1" stop-color="#173426"/>
+    </linearGradient>
+    <linearGradient id="leaf-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9a9a55"/>
+      <stop offset="1" stop-color="#4f6e3d"/>
+    </linearGradient>
+    <pattern id="paper-speckle" width="95" height="83" patternUnits="userSpaceOnUse">
+      <circle cx="14" cy="18" r="1.1" fill="#715f37" opacity=".12"/>
+      <circle cx="66" cy="32" r=".8" fill="#425a38" opacity=".1"/>
+      <circle cx="38" cy="69" r="1.2" fill="#7d704b" opacity=".08"/>
+      <path d="M79 66l6-3" stroke="#315039" stroke-width=".7" opacity=".08"/>
+      <path d="M25 43l4 3" stroke="#826f43" stroke-width=".6" opacity=".09"/>
+    </pattern>
+    <filter id="leaf-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="blur"/>
+      <feOffset in="blur" dy="7" result="offset-blur"/>
+      <feColorMatrix in="offset-blur" type="matrix" values="0 0 0 0 0.06 0 0 0 0 0.15 0 0 0 0 0.10 0 0 0 .34 0" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <g id="leaf">
+      <path d="M0 0C22-36 67-37 92-9C66 16 27 25 0 0Z" fill="url(#leaf-light)"/>
+      <path d="M5-1C29-5 55-8 83-9" fill="none" stroke="#c3c77b" stroke-width="2" opacity=".48"/>
+      <path d="M35-5L24-22M53-7L49-27M68-8L70-22M33-3L19 11M54-6L43 13M70-8L64 5" fill="none" stroke="#b4bd72" stroke-width="1.2" opacity=".34"/>
+    </g>
+    <g id="broad-leaf">
+      <path d="M0 0C8-58 48-109 102-126C115-69 91-21 0 0Z" fill="url(#leaf-dark)"/>
+      <path d="M4-4C34-39 63-76 96-116" fill="none" stroke="#8da265" stroke-width="3" opacity=".52"/>
+      <path d="M33-39L17-79M51-59L42-99M66-78L65-112M34-40L70-37M51-60L86-55M68-79L99-72" fill="none" stroke="#79945b" stroke-width="1.6" opacity=".4"/>
+    </g>
+  </defs>
+
+  <rect width="1600" height="1000" fill="url(#jungle-ground)"/>
+  <rect width="1600" height="1000" fill="url(#sunlit-clearing)"/>
+  <rect width="1600" height="1000" fill="url(#paper-speckle)" opacity=".75"/>
+
+  <g fill="none" stroke-linecap="round" filter="url(#leaf-shadow)">
+    <path d="M22-70C250 35 53 197 191 336C315 461 82 586 218 735C300 826 243 925 333 1064" stroke="#173d29" stroke-width="21"/>
+    <path d="M5-70C226 37 38 194 176 340C288 460 65 590 197 738C272 823 218 922 307 1061" stroke="#6f814a" stroke-width="5" opacity=".72"/>
+    <path d="M1578-70C1350 35 1547 197 1409 336C1285 461 1518 586 1382 735C1300 826 1357 925 1267 1064" stroke="#173d29" stroke-width="21"/>
+    <path d="M1595-70C1374 37 1562 194 1424 340C1312 460 1535 590 1403 738C1328 823 1382 922 1293 1061" stroke="#6f814a" stroke-width="5" opacity=".72"/>
+    <path d="M-60 150C115 184 152 293 90 397C39 482 128 573 93 678C64 765 111 850 205 918" stroke="#315f38" stroke-width="11"/>
+    <path d="M1660 150C1485 184 1448 293 1510 397C1561 482 1472 573 1507 678C1536 765 1489 850 1395 918" stroke="#315f38" stroke-width="11"/>
+  </g>
+
+  <g filter="url(#leaf-shadow)">
+    <use xlink:href="#broad-leaf" transform="translate(16 170) rotate(-17) scale(1.35)"/>
+    <use xlink:href="#broad-leaf" transform="translate(182 60) rotate(38) scale(.98)"/>
+    <use xlink:href="#broad-leaf" transform="translate(58 480) rotate(-2) scale(1.18)"/>
+    <use xlink:href="#broad-leaf" transform="translate(208 690) rotate(48) scale(.9)"/>
+    <use xlink:href="#broad-leaf" transform="translate(34 940) rotate(-30) scale(1.28)"/>
+    <use xlink:href="#broad-leaf" transform="translate(1584 170) scale(-1 1) rotate(-17) scale(1.35)"/>
+    <use xlink:href="#broad-leaf" transform="translate(1418 60) scale(-1 1) rotate(38) scale(.98)"/>
+    <use xlink:href="#broad-leaf" transform="translate(1542 480) scale(-1 1) rotate(-2) scale(1.18)"/>
+    <use xlink:href="#broad-leaf" transform="translate(1392 690) scale(-1 1) rotate(48) scale(.9)"/>
+    <use xlink:href="#broad-leaf" transform="translate(1566 940) scale(-1 1) rotate(-30) scale(1.28)"/>
+
+    <use xlink:href="#leaf" transform="translate(116 105) rotate(25) scale(1.12)"/>
+    <use xlink:href="#leaf" transform="translate(128 265) rotate(-12) scale(.88)"/>
+    <use xlink:href="#leaf" transform="translate(167 382) rotate(42) scale(1.05)"/>
+    <use xlink:href="#leaf" transform="translate(115 557) rotate(-18) scale(1.1)"/>
+    <use xlink:href="#leaf" transform="translate(177 735) rotate(32) scale(.92)"/>
+    <use xlink:href="#leaf" transform="translate(236 886) rotate(65) scale(1.08)"/>
+    <use xlink:href="#leaf" transform="translate(1484 105) scale(-1 1) rotate(25) scale(1.12)"/>
+    <use xlink:href="#leaf" transform="translate(1472 265) scale(-1 1) rotate(-12) scale(.88)"/>
+    <use xlink:href="#leaf" transform="translate(1433 382) scale(-1 1) rotate(42) scale(1.05)"/>
+    <use xlink:href="#leaf" transform="translate(1485 557) scale(-1 1) rotate(-18) scale(1.1)"/>
+    <use xlink:href="#leaf" transform="translate(1423 735) scale(-1 1) rotate(32) scale(.92)"/>
+    <use xlink:href="#leaf" transform="translate(1364 886) scale(-1 1) rotate(65) scale(1.08)"/>
+  </g>
+
+  <g fill="url(#leaf-gold)" opacity=".78">
+    <path d="M0 0C135 18 237 79 321 180C201 172 80 121 0 0Z"/>
+    <path d="M1600 0C1465 18 1363 79 1279 180C1399 172 1520 121 1600 0Z"/>
+    <path d="M0 1000C126 974 222 914 296 824C192 826 76 878 0 1000Z"/>
+    <path d="M1600 1000C1474 974 1378 914 1304 824C1408 826 1524 878 1600 1000Z"/>
+  </g>
+
+  <g fill="#d8be68" opacity=".42">
+    <circle cx="305" cy="232" r="4"/>
+    <circle cx="1289" cy="342" r="3"/>
+    <circle cx="258" cy="793" r="3.5"/>
+    <circle cx="1332" cy="694" r="4"/>
+  </g>
+</svg>
