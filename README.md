@@ -13,6 +13,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Multiple campaign groups with separate player rosters and one shared spell/ability library
 - 339 SRD 5.2 spells imported from the supplied JSON source
 - 174 built-in base-class feature cards covering every 2024 core class and the 2025 Artificer
+- All 75 feats from the 2024 Player’s Handbook, with categories, prerequisites, repeatability, and concise rules summaries
 - Separate spell and ability entities with structured virtual-card editors
 - Search and filters by name, level, class, and school
 - Duplicate any SRD spell into an independent editable homebrew version
@@ -59,6 +60,12 @@ To refresh the 2024 SRD base-class feature cards and their migration data:
 npm run import:class-features
 ```
 
+To rebuild the 2024 feat cards and their migration data:
+
+```bash
+npm run import:feats
+```
+
 ## Architecture
 
 - `src/pages/PlayerDashboard.tsx` — player cards and spell choices
@@ -67,16 +74,18 @@ npm run import:class-features
 - `src/data/class-progression.json` — shared automatic class limits
 - `src/data/class-features.json` — generated base-class feature card library
 - `src/data/artificer-features.json` — summarized 2025 Artificer feature cards
+- `src/data/feats.json` — generated 2024 Player’s Handbook feat-card library
 - `supabase/migrations/` — tables, policies, authentication hooks, account recovery, and guarded spell-selection functions
 - `supabase/seed.sql` — generated SRD spell seed
 - `scripts/import-spells.mjs` — repeatable SRD JSON importer
 - `scripts/import-class-features.mjs` — repeatable SRD class-feature importer and migration-data builder
+- `scripts/import-feats.mjs` — repeatable feat-card and migration-data builder
 - `.github/workflows/deploy-pages.yml` — tested GitHub Pages deployment
 
 The Supabase anonymous key is designed to be public. Access control comes from the included row-level-security policies. Never put a Supabase service-role key into this frontend or into a `VITE_` variable.
 
 ## Rules and content notes
 
-The automatic limits and base-class feature cards follow the 2024 core classes and the printed 2025 Artificer. Artificers receive Mending automatically as an always-prepared card, outside their normal cantrip limit. Class features appear automatically when a character reaches their required level; the DM can hide a feature or add another card when subclasses, multiclassing, house rules, or campaign rewards require it.
+The automatic limits and base-class feature cards follow the 2024 core classes and the printed 2025 Artificer. Artificers receive Mending automatically as an always-prepared card, outside their normal cantrip limit. Class features appear automatically when a character reaches their required level; the DM can hide a feature or add another card when subclasses, multiclassing, house rules, or campaign rewards require it. Feats are intentionally manual: the DM assigns the chosen feat after checking the prerequisite displayed on its card.
 
 The built-in spell library is SRD content. See [SRD-ATTRIBUTION.md](SRD-ATTRIBUTION.md). Project source code is licensed under [MIT](LICENSE).

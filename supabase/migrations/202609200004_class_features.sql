@@ -9,6 +9,7 @@ alter table public.abilities add column if not exists level_required integer;
 alter table public.abilities add column if not exists feature_order integer not null default 0;
 alter table public.abilities add column if not exists is_system boolean not null default false;
 alter table public.abilities add column if not exists source_type text not null default 'custom';
+alter table public.abilities add column if not exists ability_kind text not null default 'custom';
 alter table public.abilities alter column created_by drop not null;
 
 alter table public.character_abilities add column if not exists assignment_type text not null default 'dm_included';
@@ -50,6 +51,7 @@ insert into public.abilities (
   slug,
   name,
   category,
+  ability_kind,
   class_key,
   level_required,
   feature_order,
@@ -68,6 +70,7 @@ select
   item->>'slug',
   item->>'name',
   item->>'category',
+  'class_feature',
   item->>'class_key',
   (item->>'level_required')::integer,
   (item->>'feature_order')::integer,
@@ -85,6 +88,7 @@ from feature_data
 on conflict (slug) do update set
   name = excluded.name,
   category = excluded.category,
+  ability_kind = 'class_feature',
   class_key = excluded.class_key,
   level_required = excluded.level_required,
   feature_order = excluded.feature_order,

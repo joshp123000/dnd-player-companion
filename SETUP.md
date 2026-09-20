@@ -13,13 +13,14 @@ You only need to do the Supabase setup once. After that, changes pushed to `main
    3. `supabase/migrations/202609200002_account_recovery.sql`
    4. `supabase/migrations/202609200003_artificer.sql`
    5. `supabase/migrations/202609200004_class_features.sql`
-   6. `supabase/seed.sql`
+   6. `supabase/migrations/202609200005_phb_feats.sql`
+   7. `supabase/seed.sql`
 
 The final script imports all 339 SRD spells. The spell seed updates SRD records without replacing custom spells or changing assignment IDs.
 
 ### Existing installations
 
-For an existing installation that already has Artificer support, run only `supabase/migrations/202609200004_class_features.sql` to add automatic base-class feature cards. If an older installation is missing campaign groups, account recovery, or Artificer support, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
+For an existing installation that already has automatic base-class features, run only `supabase/migrations/202609200005_phb_feats.sql` to add the 75 built-in feat cards. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
 
 ## 2. Create the first DM account
 
@@ -84,8 +85,9 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Players can select or remove several spells on the preparation page, then use **Save changes** once when they are finished.
 - Update the character's class or level; the default limits recalculate automatically.
 - Base-class feature cards are automatically added or removed when the character's class or level changes.
-- In **Abilities**, use **Hide** to suppress an automatic feature for one character and **Restore** to bring it back. Adding an off-class or higher-level card creates a DM override.
-- Use overrides only for feats, multiclassing, house rules, or unusual rewards.
+- In **Abilities**, use **Hide** to suppress an automatic feature for one character and **Restore** to bring it back. Adding an off-class or higher-level feature creates a DM override.
+- Choose **Feats only** to browse all 75 Player’s Handbook feats. Each card shows its prerequisite and whether it is repeatable; use **Add** or **Remove** for the selected character.
+- Use overrides for feats, multiclassing, house rules, or unusual rewards.
 - Turn on **Preparation unlocked** after a long rest for Artificers, Clerics, Druids, Paladins, and Wizards.
 - Turn on **Spell choices unlocked** during character creation or level-up for Bards, Rangers, Sorcerers, and Warlocks. It also controls cantrip changes.
 - For Wizards, assign spells without selecting them to add them to the spellbook. The player can then prepare those entries while preparation is unlocked.

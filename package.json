@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "import:spells": "node scripts/import-spells.mjs",
-    "import:class-features": "node scripts/import-class-features.mjs"
+    "import:class-features": "node scripts/import-class-features.mjs",
+    "import:feats": "node scripts/import-feats.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
