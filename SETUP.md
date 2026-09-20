@@ -11,13 +11,14 @@ You only need to do the Supabase setup once. After that, changes pushed to `main
    1. `supabase/migrations/202609190001_initial_schema.sql`
    2. `supabase/migrations/202609200001_campaign_groups.sql`
    3. `supabase/migrations/202609200002_account_recovery.sql`
-   4. `supabase/seed.sql`
+   4. `supabase/migrations/202609200003_artificer.sql`
+   5. `supabase/seed.sql`
 
 The final script imports all 339 SRD spells. The spell seed updates SRD records without replacing custom spells or changing assignment IDs.
 
 ### Existing installations
 
-For the currently deployed app, run `supabase/migrations/202609200002_account_recovery.sql` once to add the in-app login reset. If an older installation does not have campaign groups yet, run `202609200001_campaign_groups.sql` first and then the account-recovery migration. Both preserve existing players and card assignments.
+For an existing installation that already has account recovery, run `supabase/migrations/202609200003_artificer.sql` once to add Artificer support. If an older installation does not have campaign groups or account recovery yet, run the missing migrations in the numbered order above. Every migration preserves existing players and card assignments.
 
 ## 2. Create the first DM account
 
@@ -82,9 +83,10 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Players can select or remove several spells on the preparation page, then use **Save changes** once when they are finished.
 - Update the character's class or level; the default limits recalculate automatically.
 - Use overrides only for feats, multiclassing, house rules, or unusual rewards.
-- Turn on **Preparation unlocked** after a long rest for Clerics, Druids, Paladins, and Wizards.
+- Turn on **Preparation unlocked** after a long rest for Artificers, Clerics, Druids, Paladins, and Wizards.
 - Turn on **Spell choices unlocked** during character creation or level-up for Bards, Rangers, Sorcerers, and Warlocks. It also controls cantrip changes.
 - For Wizards, assign spells without selecting them to add them to the spellbook. The player can then prepare those entries while preparation is unlocked.
+- Artificers receive Mending automatically as an always-prepared card; it does not use one of their normal cantrip choices.
 - Mark subclass or granted spells **Always prepared** so they stay active without using the normal limit.
 
 ## Password recovery for a player

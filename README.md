@@ -15,9 +15,9 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Separate spell and ability entities with structured virtual-card editors
 - Search and filters by name, level, class, and school
 - Duplicate any SRD spell into an independent editable homebrew version
-- 2024 class/level spell and cantrip limits for Bard, Cleric, Druid, Paladin, Ranger, Sorcerer, Warlock, and Wizard
+- Automatic class/level spell and cantrip limits for the 2024 core casters plus the 2025 Artificer
 - Per-character DM overrides for every automatic limit
-- Daily preparation, level-up choice, and Wizard spellbook workflows
+- Daily preparation, level-up choice, and Wizard spellbook workflows, including Artificer support
 - Staged spell selection so players can make several choices and save once
 - Separate one-click DM controls for preparation and level-up spell/cantrip choices
 - Always-prepared spells that do not count against a character's normal limit
@@ -56,7 +56,7 @@ npm run import:spells
 - `src/pages/PlayerDashboard.tsx` — player cards and spell choices
 - `src/pages/DmDashboard.tsx` — player management and content workshop
 - `src/lib/campaigns.ts` — campaign roster filtering and deletion safeguards
-- `src/data/class-progression.json` — shared 2024 class limits
+- `src/data/class-progression.json` — shared automatic class limits
 - `supabase/migrations/` — tables, policies, authentication hooks, account recovery, and guarded spell-selection functions
 - `supabase/seed.sql` — generated SRD spell seed
 - `scripts/import-spells.mjs` — repeatable SRD JSON importer
@@ -66,6 +66,6 @@ The Supabase anonymous key is designed to be public. Access control comes from t
 
 ## Rules and content notes
 
-The automatic limits follow the 2024 class tables. A DM override is available because feats, multiclassing, subclasses, house rules, and campaign rewards can change a character's normal allowance.
+The automatic limits follow the 2024 core class tables and the printed 2025 Artificer table. Artificers receive Mending automatically as an always-prepared card, outside their normal cantrip limit. A DM override is available because feats, multiclassing, subclasses, house rules, and campaign rewards can change a character's normal allowance.
 
 The built-in spell library is SRD content. See [SRD-ATTRIBUTION.md](SRD-ATTRIBUTION.md). Project source code is licensed under [MIT](LICENSE).

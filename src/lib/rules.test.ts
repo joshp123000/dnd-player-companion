@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../types'
-import { defaultProgression, effectiveLimits, spellLevelLabel } from './rules'
+import {
+  CHARACTER_CLASSES,
+  SPELLCASTING_CLASSES,
+  defaultProgression,
+  effectiveLimits,
+  spellLevelLabel,
+} from './rules'
 
 const character = (changes: Partial<Character> = {}): Character => ({
   id: 'character-id',
@@ -22,7 +28,30 @@ const character = (changes: Partial<Character> = {}): Character => ({
   ...changes,
 })
 
-describe('2024 class progression', () => {
+describe('class progression', () => {
+  it('uses the printed 2025 Artificer progression', () => {
+    expect(CHARACTER_CLASSES).toContain('artificer')
+    expect(SPELLCASTING_CLASSES).toContain('artificer')
+    expect(defaultProgression('artificer', 1)).toMatchObject({
+      cantrips: 2,
+      prepared_spells: 2,
+      max_spell_level: 1,
+      selection_mode: 'daily',
+    })
+    expect(defaultProgression('artificer', 14)).toMatchObject({
+      cantrips: 4,
+      prepared_spells: 11,
+      max_spell_level: 4,
+      selection_mode: 'daily',
+    })
+    expect(defaultProgression('artificer', 20)).toMatchObject({
+      cantrips: 4,
+      prepared_spells: 15,
+      max_spell_level: 5,
+      selection_mode: 'daily',
+    })
+  })
+
   it('returns Wizard level 5 limits', () => {
     expect(defaultProgression('wizard', 5)).toMatchObject({
       cantrips: 4,

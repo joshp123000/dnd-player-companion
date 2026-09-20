@@ -14,6 +14,7 @@ type ProgressionSource = Record<
 const progression = progressionData as ProgressionSource
 
 export const CHARACTER_CLASSES = [
+  'artificer',
   'barbarian',
   'bard',
   'cleric',

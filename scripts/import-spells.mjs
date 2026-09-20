@@ -4,9 +4,12 @@ import { fileURLToPath } from 'node:url'
 
 const SOURCE_URL = 'https://gist.githubusercontent.com/dmcb/4b67869f962e3adaa3d0f7e5ca8f4912/raw/srd-5.2-spells.json'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const jsonOutput = resolve(root, 'public/data/spells.json')
 const inputIndex = process.argv.indexOf('--input')
+const retagExisting = process.argv.includes('--retag-existing')
 
 const loadSource = async () => {
+  if (retagExisting) return readFile(jsonOutput, 'utf8')
   if (inputIndex >= 0 && process.argv[inputIndex + 1]) {
     return readFile(resolve(process.cwd(), process.argv[inputIndex + 1]), 'utf8')
   }
@@ -24,12 +27,101 @@ if (!Array.isArray(rawSpells) || rawSpells.length < 300) {
 const cleanText = (value) => typeof value === 'string' ? value.trim() : null
 const slugify = (value) => value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
-const spells = rawSpells.map((spell) => ({
+// Eberron: Forge of the Artificer uses the 2024 rules but is not part of SRD 5.2,
+// so the SRD source does not include Artificer class tags. Keep the overlapping
+// spell names mapped here so refreshing the source does not erase those tags.
+// Mending is included because Tinker's Magic grants it automatically.
+const ARTIFICER_SPELL_SLUGS = new Set([
+  'srd-acid-splash',
+  'srd-aid',
+  'srd-alarm',
+  'srd-alter-self',
+  'srd-animate-objects',
+  'srd-arcane-eye',
+  'srd-arcane-hand',
+  'srd-arcane-lock',
+  'srd-blink',
+  'srd-blur',
+  'srd-continual-flame',
+  'srd-create-food-and-water',
+  'srd-creation',
+  'srd-cure-wounds',
+  'srd-dancing-lights',
+  'srd-darkvision',
+  'srd-detect-magic',
+  'srd-disguise-self',
+  'srd-dispel-magic',
+  'srd-dragon-s-breath',
+  'srd-elementalism',
+  'srd-enhance-ability',
+  'srd-enlarge-reduce',
+  'srd-expeditious-retreat',
+  'srd-fabricate',
+  'srd-faerie-fire',
+  'srd-faithful-hound',
+  'srd-false-life',
+  'srd-feather-fall',
+  'srd-fire-bolt',
+  'srd-fly',
+  'srd-freedom-of-movement',
+  'srd-glyph-of-warding',
+  'srd-grease',
+  'srd-greater-restoration',
+  'srd-guidance',
+  'srd-haste',
+  'srd-heat-metal',
+  'srd-identify',
+  'srd-invisibility',
+  'srd-jump',
+  'srd-lesser-restoration',
+  'srd-levitate',
+  'srd-light',
+  'srd-longstrider',
+  'srd-mage-hand',
+  'srd-magic-mouth',
+  'srd-magic-weapon',
+  'srd-mending',
+  'srd-message',
+  'srd-poison-spray',
+  'srd-prestidigitation',
+  'srd-private-sanctum',
+  'srd-protection-from-energy',
+  'srd-protection-from-poison',
+  'srd-purify-food-and-drink',
+  'srd-ray-of-frost',
+  'srd-resilient-sphere',
+  'srd-resistance',
+  'srd-revivify',
+  'srd-rope-trick',
+  'srd-sanctuary',
+  'srd-secret-chest',
+  'srd-see-invisibility',
+  'srd-shocking-grasp',
+  'srd-spare-the-dying',
+  'srd-spider-climb',
+  'srd-stone-shape',
+  'srd-stoneskin',
+  'srd-true-strike',
+  'srd-wall-of-stone',
+  'srd-water-breathing',
+  'srd-water-walk',
+  'srd-web',
+])
+
+const classList = (spell) => {
+  const classes = Array.isArray(spell.classes) ? spell.classes.map((item) => String(item).toLowerCase()) : []
+  const slug = `srd-${slugify(spell.name)}`
+  return ARTIFICER_SPELL_SLUGS.has(slug) && !classes.includes('artificer')
+    ? [...classes, 'artificer']
+    : classes
+}
+
+const normalizeSpell = (spell) => ({
   slug: `srd-${slugify(spell.name)}`,
   name: cleanText(spell.name),
   level: Number(spell.level),
   school: cleanText(spell.school)?.toLowerCase(),
-  classes: Array.isArray(spell.classes) ? spell.classes.map((item) => String(item).toLowerCase()) : [],
+  classes: classList(spell),
   action_type: cleanText(spell.actionType) ?? 'action',
   casting_time: cleanText(spell.castingTime),
   casting_trigger: cleanText(spell.castingTrigger),
@@ -44,9 +136,12 @@ const spells = rawSpells.map((spell) => ({
   cantrip_upgrade: cleanText(spell.cantripUpgrade),
   source_type: 'srd',
   source_label: 'SRD 5.2 (2024)',
-}))
+})
 
-const jsonOutput = resolve(root, 'public/data/spells.json')
+const spells = retagExisting
+  ? rawSpells.map((spell) => ({ ...spell, classes: classList(spell) }))
+  : rawSpells.map(normalizeSpell)
+
 await mkdir(dirname(jsonOutput), { recursive: true })
 await writeFile(jsonOutput, `${JSON.stringify(spells, null, 2)}\n`)
 
