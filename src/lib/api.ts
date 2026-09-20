@@ -225,18 +225,6 @@ export const setAllPreparationUnlocked = async (
   if (error) throw error
 }
 
-export const setAllChoicesUnlocked = async (
-  characterIds: string[],
-  unlocked: boolean,
-) => {
-  if (characterIds.length === 0) return
-  const { error } = await requireSupabase()
-    .from('characters')
-    .update({ choices_unlocked: unlocked })
-    .in('id', characterIds)
-  if (error) throw error
-}
-
 export const listCharacters = async (): Promise<Character[]> => {
   const { data, error } = await requireSupabase()
     .from('characters')

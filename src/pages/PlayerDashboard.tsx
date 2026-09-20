@@ -82,10 +82,11 @@ export function PlayerDashboard({
     filters,
   )
 
-  let choices = eligibleSpells
+  const usesPreparedSelection = limits.selectionMode === 'daily' || limits.selectionMode === 'spellbook'
+  let choices = eligibleSpells.filter((spell) => spell.level > 0)
   if (limits.selectionMode === 'spellbook') {
     const spellbookIds = new Set(spellAssignments.filter((row) => row.in_collection).map((row) => row.spell_id))
-    choices = eligibleSpells.filter((spell) => spell.level === 0 || spellbookIds.has(spell.id))
+    choices = choices.filter((spell) => spellbookIds.has(spell.id))
   }
   const filteredChoices = filterSpells(choices, filters)
   const alwaysPreparedIds = new Set(
@@ -110,11 +111,8 @@ export function PlayerDashboard({
   const hasUnsavedSelection = !setsMatch(savedSelectedSpellIds, draftSelectedSpellIds)
 
   const canEditSpell = (spell: Spell) => {
-    if (spell.level === 0) return character.choices_unlocked
-    if (limits.selectionMode === 'daily' || limits.selectionMode === 'spellbook') {
-      return character.preparation_unlocked
-    }
-    return limits.selectionMode === 'level_choice' && character.choices_unlocked
+    if (spell.level === 0) return false
+    return usesPreparedSelection && character.preparation_unlocked
   }
 
   const saveSpellSelection = async () => {
@@ -164,7 +162,7 @@ export function PlayerDashboard({
           { value: 'cards', label: 'All cards' },
           { value: 'spells', label: 'Spells' },
           { value: 'abilities', label: 'Abilities' },
-          { value: 'choices', label: limits.selectionMode === 'daily' || limits.selectionMode === 'spellbook' ? 'Prepare' : 'Choices' },
+          ...(usesPreparedSelection ? [{ value: 'choices' as PlayerTab, label: 'Prepare' }] : []),
         ]}
       />
 
@@ -176,7 +174,7 @@ export function PlayerDashboard({
         <div className="dashboard-section">
           <div className="section-heading"><div><span className="eyebrow">At the table</span><h2>Your active cards</h2></div></div>
           {activeAssignments.length === 0 && abilities.length === 0 ? (
-            <EmptyState icon={<BookOpen />} title="No cards yet" message="Your DM can assign abilities, or unlock spell choices for you." />
+            <EmptyState icon={<BookOpen />} title="No cards yet" message="Your DM can assign your spells and abilities here." />
           ) : (
             <div className="card-grid">
               {activeAssignments.map((assignment) => assignment.spell && (
@@ -233,18 +231,12 @@ export function PlayerDashboard({
           <div className="section-heading">
             <div>
               <span className="eyebrow">{classLabel(character.class_key)} level {character.level}</span>
-              <h2>{limits.selectionMode === 'spellbook' ? 'Prepare from your spellbook' : limits.selectionMode === 'daily' ? 'Prepare spells' : 'Choose spells'}</h2>
+              <h2>{limits.selectionMode === 'spellbook' ? 'Prepare from your spellbook' : 'Prepare spells'}</h2>
             </div>
             <span className="result-count">Up to level {limits.maxSpellLevel}</span>
           </div>
-          {!character.preparation_unlocked && !character.choices_unlocked && (
-            <div className="locked-notice"><LockKeyhole size={20} /><div><strong>Choices are locked</strong><span>Your DM can unlock this section after a long rest or when you level up.</span></div></div>
-          )}
-          {character.preparation_unlocked && !character.choices_unlocked && limits.cantrips > 0 && (
-            <div className="locked-notice"><LockKeyhole size={20} /><div><strong>Cantrip choices are locked</strong><span>Your DM has opened prepared spells, but must also open spell choices to change cantrips.</span></div></div>
-          )}
-          {!character.preparation_unlocked && character.choices_unlocked && (limits.selectionMode === 'daily' || limits.selectionMode === 'spellbook') && (
-            <div className="locked-notice"><LockKeyhole size={20} /><div><strong>Prepared spell changes are locked</strong><span>You can change cantrips, but your DM must open preparation to change leveled spells.</span></div></div>
+          {!character.preparation_unlocked && (
+            <div className="locked-notice"><LockKeyhole size={20} /><div><strong>Prepared spell changes are locked</strong><span>Your DM must open preparation after a Long Rest before you can make changes.</span></div></div>
           )}
           <div className={`selection-save-bar ${hasUnsavedSelection ? 'selection-save-bar--dirty' : ''}`}>
             <div>

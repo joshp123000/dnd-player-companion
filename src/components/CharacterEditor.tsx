@@ -30,7 +30,6 @@ export function CharacterEditor({
       level: form.level,
       notes: form.notes?.trim() || null,
       preparation_unlocked: form.preparation_unlocked,
-      choices_unlocked: form.choices_unlocked,
       max_cantrips_override: form.max_cantrips_override,
       max_prepared_override: form.max_prepared_override,
       max_spell_level_override: form.max_spell_level_override,
@@ -62,10 +61,6 @@ export function CharacterEditor({
         <label className="switch-row">
           <span><strong>Preparation unlocked</strong><small>Lets daily casters and Wizards change prepared spells.</small></span>
           <input type="checkbox" checked={form.preparation_unlocked} onChange={(event) => setForm({ ...form, preparation_unlocked: event.target.checked })} />
-        </label>
-        <label className="switch-row">
-          <span><strong>Spell choices unlocked</strong><small>Lets players choose cantrips or make level-up spell choices.</small></span>
-          <input type="checkbox" checked={form.choices_unlocked} onChange={(event) => setForm({ ...form, choices_unlocked: event.target.checked })} />
         </label>
       </div>
 

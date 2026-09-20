@@ -43,7 +43,6 @@ import {
   removeSpellAssignment,
   resetPlayerLogin,
   setAbilityAssignment,
-  setAllChoicesUnlocked,
   setAllPreparationUnlocked,
   updateAbility,
   updateCampaign,
@@ -215,7 +214,7 @@ function AssignmentForm({
   onSubmit: (prepared: boolean, alwaysPrepared: boolean) => void
   onCancel: () => void
 }) {
-  const [prepared, setPrepared] = useState(character.class_key !== 'wizard')
+  const [prepared, setPrepared] = useState(spell.level === 0 || character.class_key !== 'wizard')
   const [alwaysPrepared, setAlwaysPrepared] = useState(false)
   return (
     <form className="editor-form" onSubmit={(event) => { event.preventDefault(); onSubmit(prepared || alwaysPrepared, alwaysPrepared) }}>
@@ -268,9 +267,6 @@ export function DmDashboard({
   ), [abilityAssignments])
   const allPreparationUnlocked = characters.length > 0 && characters.every(
     (character) => character.preparation_unlocked,
-  )
-  const allChoicesUnlocked = characters.length > 0 && characters.every(
-    (character) => character.choices_unlocked,
   )
 
   const load = useCallback(async (preferredCampaignId?: string) => {
@@ -430,23 +426,6 @@ export function DmDashboard({
     }
   }
 
-  const toggleAllChoices = async () => {
-    const unlocked = !allChoicesUnlocked
-    setBusy(true)
-    try {
-      await setAllChoicesUnlocked(characters.map((character) => character.id), unlocked)
-      setCharacters((current) => current.map((character) => ({
-        ...character,
-        choices_unlocked: unlocked,
-      })))
-      onSuccess(unlocked ? 'Level-up spell and cantrip choices opened for every player.' : 'Level-up spell and cantrip choices locked for every player.')
-    } catch (error) {
-      onError(friendlyError(error))
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const saveSpell = async (input: SpellInput) => {
     if (editor?.kind !== 'spell') return
     const isEdit = Boolean(editor.spell && !editor.duplicate && editor.spell.source_type === 'custom')
@@ -544,15 +523,6 @@ export function DmDashboard({
                 {allPreparationUnlocked ? <LockKeyhole size={17} /> : <UnlockKeyhole size={17} />}
                 {allPreparationUnlocked ? 'Lock prep for everyone' : 'Open prep for everyone'}
               </Button>
-              <Button
-                variant="secondary"
-                disabled={characters.length === 0 || busy}
-                title="Level-up choices include cantrips"
-                onClick={() => void toggleAllChoices()}
-              >
-                {allChoicesUnlocked ? <LockKeyhole size={17} /> : <UnlockKeyhole size={17} />}
-                {allChoicesUnlocked ? 'Lock level-up choices' : 'Open level-up choices'}
-              </Button>
               <Button disabled={!selectedCampaign || busy} onClick={() => setEditor({ kind: 'create-character' })}><UserPlus size={18} /> Add player</Button>
             </div>
           </div>
@@ -573,7 +543,6 @@ export function DmDashboard({
                   <dl className="player-admin-card__details">
                     <div><dt>Username</dt><dd>{character.login_username}</dd></div>
                     <div><dt>Preparation</dt><dd>{character.preparation_unlocked ? 'Unlocked' : 'Locked'}</dd></div>
-                    <div><dt>Choices</dt><dd>{character.choices_unlocked ? 'Unlocked' : 'Locked'}</dd></div>
                   </dl>
                   <div className="player-admin-card__actions">
                     <Button variant="secondary" onClick={() => setEditor({ kind: 'edit-character', character })}><Edit3 size={16} /> Edit</Button>

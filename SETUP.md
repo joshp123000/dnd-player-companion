@@ -81,16 +81,17 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Choose **New campaign** to add another group. Spells and abilities remain shared between every campaign.
 - Move a character between groups from that character's **Edit** form. Empty campaigns can be deleted; campaigns containing players cannot.
 - If one person plays in both campaigns, create a separate player username and character for each campaign.
-- Use **Open prep for everyone** for daily prepared-spell changes. Use **Open level-up choices** for permanent spell and cantrip choices. Each button locks only its own type of access when you click it again.
-- Players can select or remove several spells on the preparation page, then use **Save changes** once when they are finished.
+- Use **Open prep for everyone** after a Long Rest so prepared casters can change their leveled spells. Click it again to lock preparation.
+- Prepared casters can select or remove several leveled spells on the preparation page, then use **Save changes** once when they are finished. Cantrips never appear on that page.
+- Assign cantrips and permanent known spells yourself from the **Spell library** after the player chooses them from the book.
 - Update the character's class or level; the default limits recalculate automatically.
 - Base-class feature cards are automatically added or removed when the character's class or level changes.
 - In **Abilities**, use **Hide** to suppress an automatic feature for one character and **Restore** to bring it back. Adding an off-class or higher-level feature creates a DM override.
 - Choose **Feats only** to browse all 75 Player’s Handbook feats. Each card shows its prerequisite and whether it is repeatable; use **Add** or **Remove** for the selected character.
 - Use overrides for feats, multiclassing, house rules, or unusual rewards.
 - Turn on **Preparation unlocked** after a long rest for Artificers, Clerics, Druids, Paladins, and Wizards.
-- Turn on **Spell choices unlocked** during character creation or level-up for Bards, Rangers, Sorcerers, and Warlocks. It also controls cantrip changes.
-- For Wizards, assign spells without selecting them to add them to the spellbook. The player can then prepare those entries while preparation is unlocked.
+- For Bards, Rangers, Sorcerers, and Warlocks, assign their chosen spells with **Selected/prepared now** turned on so the cards appear immediately.
+- For Wizards, assign leveled spells without selecting them to add them to the spellbook. Assign Wizard cantrips with **Selected/prepared now** turned on. The player can prepare leveled spellbook entries while preparation is unlocked.
 - Artificers receive Mending automatically as an always-prepared card; it does not use one of their normal cantrip choices.
 - Mark subclass or granted spells **Always prepared** so they stay active without using the normal limit.
 

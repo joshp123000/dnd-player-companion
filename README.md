@@ -1,6 +1,6 @@
 # Campaign Compendium
 
-A phone-first D&D 2024 spell and ability companion for a private campaign. Players see only their own character cards. The DM controls player access, creates or duplicates content, assigns abilities, and unlocks spell preparation or level-up choices.
+A phone-first D&D 2024 spell and ability companion for a private campaign. Players see only their own character cards. The DM controls player access, creates or duplicates content, assigns permanent spell choices and abilities, and unlocks daily spell preparation.
 
 The frontend is a static React app designed for GitHub Pages. Supabase supplies authentication, the database, and row-level permissions.
 
@@ -20,9 +20,9 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Automatic class/level spell and cantrip limits for the 2024 core casters plus the 2025 Artificer
 - Per-character DM overrides for every automatic limit
 - Automatic class-feature assignments by class and level, with per-card DM hide/restore overrides
-- Daily preparation, level-up choice, and Wizard spellbook workflows, including Artificer support
+- DM-assigned cantrips and permanent known spells, plus daily preparation and Wizard spellbook workflows
 - Staged spell selection so players can make several choices and save once
-- Separate one-click DM controls for preparation and level-up spell/cantrip choices
+- One-click DM control for opening or locking daily spell preparation
 - Always-prepared spells that do not count against a character's normal limit
 - Secure Supabase row-level security: players cannot read another player's character or assignments
 - Responsive, accessible layout for phones, tablets, and desktops
