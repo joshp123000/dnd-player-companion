@@ -12,6 +12,7 @@ import type {
 } from '../types'
 import { loginIdentifierToEmail, normalizeUsername, usernameToEmail } from './auth'
 import { requireSupabase } from './supabase'
+import type { ThemeKey } from './themes'
 
 export interface CreateCharacterInput {
   username: string
@@ -106,6 +107,14 @@ export const changePassword = async (currentPassword: string, newPassword: strin
 
   const { error: updateError } = await client.auth.updateUser({ password: newPassword })
   if (updateError) throw updateError
+}
+
+export const updateTheme = async (themeKey: ThemeKey) => {
+  const { data, error } = await requireSupabase().auth.updateUser({
+    data: { theme_key: themeKey },
+  })
+  if (error) throw error
+  return data.user
 }
 
 export const loadProfile = async (userId: string): Promise<Profile> => {

@@ -9,6 +9,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Username/password access for players and email/password access for the DM
 - One-time player activation codes—passwords never live in the GitHub repository
 - Self-service password changes plus DM-controlled account recovery and username changes
+- Per-account Classic Compendium, Spelljammer, and Tomb of Annihilation visual themes
 - Multiple campaign groups with separate player rosters and one shared spell/ability library
 - 339 SRD 5.2 spells imported from the supplied JSON source
 - Separate spell and ability entities with structured virtual-card editors

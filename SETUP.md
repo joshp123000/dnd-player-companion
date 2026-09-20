@@ -73,6 +73,7 @@ The activation code is stored as a one-way hash and is erased after successful u
 
 ## Normal campaign workflow
 
+- Each player can choose **Account → Compendium style**. Their Classic, Spelljammer, or Tomb of Annihilation selection is saved to their login and follows them between devices.
 - Use the campaign selector above the DM tabs to switch rosters.
 - Choose **New campaign** to add another group. Spells and abilities remain shared between every campaign.
 - Move a character between groups from that character's **Edit** form. Empty campaigns can be deleted; campaigns containing players cannot.
