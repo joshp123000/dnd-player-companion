@@ -9,9 +9,18 @@ export interface Profile {
   role: Role
 }
 
+export interface Campaign {
+  id: string
+  name: string
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Character {
   id: string
   user_id: string | null
+  campaign_id: string
   login_username: string
   name: string
   class_key: string

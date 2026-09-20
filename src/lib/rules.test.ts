@@ -5,6 +5,7 @@ import { defaultProgression, effectiveLimits, spellLevelLabel } from './rules'
 const character = (changes: Partial<Character> = {}): Character => ({
   id: 'character-id',
   user_id: 'user-id',
+  campaign_id: 'campaign-id',
   login_username: 'player',
   name: 'Test Hero',
   class_key: 'wizard',

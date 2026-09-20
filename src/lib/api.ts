@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import type {
   Ability,
+  Campaign,
   Character,
   CharacterAbility,
   CharacterSpell,
@@ -18,6 +19,7 @@ export interface CreateCharacterInput {
   characterName: string
   classKey: string
   level: number
+  campaignId: string
 }
 
 export interface SpellInput {
@@ -180,6 +182,42 @@ export const listCharacters = async (): Promise<Character[]> => {
   return (data ?? []) as Character[]
 }
 
+export const listCampaigns = async (): Promise<Campaign[]> => {
+  const { data, error } = await requireSupabase()
+    .from('campaigns')
+    .select('*')
+    .order('created_at')
+    .order('name')
+  if (error) throw error
+  return (data ?? []) as Campaign[]
+}
+
+export const createCampaign = async (name: string): Promise<Campaign> => {
+  const { data, error } = await requireSupabase()
+    .from('campaigns')
+    .insert({ name: name.trim() })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as Campaign
+}
+
+export const updateCampaign = async (campaignId: string, name: string): Promise<Campaign> => {
+  const { data, error } = await requireSupabase()
+    .from('campaigns')
+    .update({ name: name.trim() })
+    .eq('id', campaignId)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as Campaign
+}
+
+export const deleteCampaign = async (campaignId: string) => {
+  const { error } = await requireSupabase().from('campaigns').delete().eq('id', campaignId)
+  if (error) throw error
+}
+
 export const createCharacter = async (input: CreateCharacterInput): Promise<string> => {
   const { data, error } = await requireSupabase().rpc('dm_create_character', {
     p_username: normalizeUsername(input.username),
@@ -187,6 +225,7 @@ export const createCharacter = async (input: CreateCharacterInput): Promise<stri
     p_character_name: input.characterName.trim(),
     p_class_key: input.classKey,
     p_level: input.level,
+    p_campaign_id: input.campaignId,
   })
   if (error) throw error
   return String(data)
@@ -194,6 +233,7 @@ export const createCharacter = async (input: CreateCharacterInput): Promise<stri
 
 export const updateCharacter = async (characterId: string, changes: Partial<Character>) => {
   const allowed = {
+    campaign_id: changes.campaign_id,
     name: changes.name,
     class_key: changes.class_key,
     subclass: changes.subclass,

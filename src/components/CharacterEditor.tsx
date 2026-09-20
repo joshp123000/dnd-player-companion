@@ -1,15 +1,17 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import type { Character } from '../types'
+import type { Campaign, Character } from '../types'
 import { CHARACTER_CLASSES, classLabel, defaultProgression } from '../lib/rules'
 import { Button, Field, Input, Select } from './ui'
 
 export function CharacterEditor({
   character,
+  campaigns,
   busy,
   onSubmit,
   onCancel,
 }: {
   character: Character
+  campaigns: Campaign[]
   busy?: boolean
   onSubmit: (changes: Partial<Character>) => void
   onCancel: () => void
@@ -21,6 +23,7 @@ export function CharacterEditor({
   const submit = (event: FormEvent) => {
     event.preventDefault()
     onSubmit({
+      campaign_id: form.campaign_id,
       name: form.name.trim(),
       class_key: form.class_key,
       subclass: form.subclass?.trim() || null,
@@ -36,9 +39,14 @@ export function CharacterEditor({
 
   return (
     <form className="editor-form" onSubmit={submit}>
-      <div className="form-grid form-grid--2">
+      <div className="form-grid form-grid--3">
         <Field label="Character name"><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></Field>
         <Field label="Login username" hint="The login name cannot be changed after creation."><Input value={form.login_username} disabled /></Field>
+        <Field label="Campaign">
+          <Select value={form.campaign_id} onChange={(event) => setForm({ ...form, campaign_id: event.target.value })} required>
+            {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}
+          </Select>
+        </Field>
       </div>
       <div className="form-grid form-grid--3">
         <Field label="Class">

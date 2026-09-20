@@ -26,12 +26,15 @@ import {
   assignAbility,
   assignSpell,
   createAbility,
+  createCampaign,
   createCharacter,
   createSpell,
   deleteAbility,
+  deleteCampaign,
   deleteCharacter,
   deleteSpell,
   listAbilities,
+  listCampaigns,
   listCharacterAbilityIds,
   listCharacterSpellIds,
   listCharacters,
@@ -40,18 +43,21 @@ import {
   removeSpellAssignment,
   rotateActivationCode,
   updateAbility,
+  updateCampaign,
   updateCharacter,
   updateSpell,
   type AbilityInput,
   type SpellInput,
 } from '../lib/api'
+import { canDeleteCampaign, charactersForCampaign, cleanCampaignName } from '../lib/campaigns'
 import { friendlyError, initials } from '../lib/format'
 import { filterSpells } from '../lib/filter'
 import { CHARACTER_CLASSES, classLabel } from '../lib/rules'
-import type { Ability, Character, Spell, SpellFilters as FilterValues } from '../types'
+import type { Ability, Campaign, Character, Spell, SpellFilters as FilterValues } from '../types'
 
 type DmTab = 'players' | 'spells' | 'abilities'
 type EditorState =
+  | { kind: 'campaign'; campaign?: Campaign }
   | { kind: 'create-character' }
   | { kind: 'edit-character'; character: Character }
   | { kind: 'activation'; character: Character }
@@ -63,12 +69,16 @@ type EditorState =
 const initialFilters: FilterValues = { search: '', level: 'all', classKey: 'all', school: 'all' }
 
 function CreateCharacterForm({
+  campaigns,
+  initialCampaignId,
   busy,
   onSubmit,
   onCancel,
 }: {
+  campaigns: Campaign[]
+  initialCampaignId: string
   busy: boolean
-  onSubmit: (input: { username: string; activationCode: string; characterName: string; classKey: string; level: number }) => void
+  onSubmit: (input: { username: string; activationCode: string; characterName: string; classKey: string; level: number; campaignId: string }) => void
   onCancel: () => void
 }) {
   const [username, setUsername] = useState('')
@@ -76,12 +86,18 @@ function CreateCharacterForm({
   const [characterName, setCharacterName] = useState('')
   const [classKey, setClassKey] = useState('fighter')
   const [level, setLevel] = useState(1)
+  const [campaignId, setCampaignId] = useState(initialCampaignId)
 
   return (
     <form className="editor-form" onSubmit={(event) => {
       event.preventDefault()
-      onSubmit({ username, activationCode, characterName, classKey, level })
+      onSubmit({ username, activationCode, characterName, classKey, level, campaignId })
     }}>
+      <Field label="Campaign" hint="This controls which campaign roster the character appears in.">
+        <Select value={campaignId} onChange={(event) => setCampaignId(event.target.value)} required>
+          {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}
+        </Select>
+      </Field>
       <div className="form-grid form-grid--2">
         <Field label="Player username" hint="3–32 lowercase letters, numbers, _ or -.">
           <Input pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" value={username} onChange={(event) => setUsername(event.target.value.toLowerCase())} placeholder="ragnar" required />
@@ -102,6 +118,32 @@ function CreateCharacterForm({
       <div className="form-actions">
         <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create player'}</Button>
+      </div>
+    </form>
+  )
+}
+
+function CampaignForm({
+  campaign,
+  busy,
+  onSubmit,
+  onCancel,
+}: {
+  campaign?: Campaign
+  busy: boolean
+  onSubmit: (name: string) => void
+  onCancel: () => void
+}) {
+  const [name, setName] = useState(campaign?.name ?? '')
+
+  return (
+    <form className="editor-form" onSubmit={(event) => { event.preventDefault(); onSubmit(cleanCampaignName(name)) }}>
+      <Field label="Campaign name" hint="Players only see their own character; this name organizes your DM dashboard.">
+        <Input minLength={1} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} placeholder="Spelljammer" required autoFocus />
+      </Field>
+      <div className="form-actions">
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" disabled={busy || cleanCampaignName(name).length === 0}>{busy ? 'Saving…' : campaign ? 'Save campaign' : 'Create campaign'}</Button>
       </div>
     </form>
   )
@@ -166,9 +208,11 @@ export function DmDashboard({
   onSuccess: (message: string) => void
 }) {
   const [tab, setTab] = useState<DmTab>('players')
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [characters, setCharacters] = useState<Character[]>([])
   const [spells, setSpells] = useState<Spell[]>([])
   const [abilities, setAbilities] = useState<Ability[]>([])
+  const [selectedCampaignId, setSelectedCampaignId] = useState('')
   const [selectedCharacterId, setSelectedCharacterId] = useState('')
   const [assignedSpellIds, setAssignedSpellIds] = useState<Set<string>>(new Set())
   const [assignedAbilityIds, setAssignedAbilityIds] = useState<Set<string>>(new Set())
@@ -179,21 +223,32 @@ export function DmDashboard({
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
 
-  const selectedCharacter = characters.find((character) => character.id === selectedCharacterId) ?? null
+  const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null
+  const campaignCharacters = useMemo(
+    () => charactersForCampaign(characters, selectedCampaignId),
+    [characters, selectedCampaignId],
+  )
+  const selectedCharacter = campaignCharacters.find((character) => character.id === selectedCharacterId) ?? null
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (preferredCampaignId?: string) => {
     setLoading(true)
     try {
-      const [characterRows, spellRows, abilityRows] = await Promise.all([
+      const [campaignRows, characterRows, spellRows, abilityRows] = await Promise.all([
+        listCampaigns(),
         listCharacters(),
         listSpells(),
         listAbilities(),
       ])
+      setCampaigns(campaignRows)
       setCharacters(characterRows)
       setSpells(spellRows)
       setAbilities(abilityRows)
-      setSelectedCharacterId((current) =>
-        characterRows.some((character) => character.id === current) ? current : characterRows[0]?.id || '',
+      setSelectedCampaignId((current) =>
+        preferredCampaignId && campaignRows.some((campaign) => campaign.id === preferredCampaignId)
+          ? preferredCampaignId
+          : campaignRows.some((campaign) => campaign.id === current)
+            ? current
+            : campaignRows[0]?.id ?? '',
       )
     } catch (error) {
       onError(friendlyError(error))
@@ -221,6 +276,13 @@ export function DmDashboard({
   }, [onError])
 
   useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    setSelectedCharacterId((current) =>
+      campaignCharacters.some((character) => character.id === current)
+        ? current
+        : campaignCharacters[0]?.id ?? '',
+    )
+  }, [campaignCharacters])
   useEffect(() => { void loadAssignments(selectedCharacterId) }, [loadAssignments, selectedCharacterId])
 
   const filteredSpells = useMemo(() => filterSpells(spells, filters), [spells, filters])
@@ -240,6 +302,47 @@ export function DmDashboard({
       await load()
       await loadAssignments(selectedCharacterId)
       onSuccess(success)
+    } catch (error) {
+      onError(friendlyError(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveCampaign = async (name: string) => {
+    if (editor?.kind !== 'campaign') return
+    setBusy(true)
+    try {
+      const savedCampaign = editor.campaign
+        ? await updateCampaign(editor.campaign.id, name)
+        : await createCampaign(name)
+      const wasUpdate = Boolean(editor.campaign)
+      setEditor(null)
+      await load(savedCampaign.id)
+      onSuccess(wasUpdate ? `${savedCampaign.name} updated.` : `${savedCampaign.name} created.`)
+    } catch (error) {
+      onError(friendlyError(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deleteCampaignRow = async (campaign: Campaign) => {
+    if (campaigns.length <= 1) {
+      onError('Keep at least one campaign.')
+      return
+    }
+    if (!canDeleteCampaign(characters, campaign.id)) {
+      onError('Move or delete every player in this campaign before deleting it.')
+      return
+    }
+    if (!window.confirm(`Delete the empty campaign ${campaign.name}?`)) return
+
+    setBusy(true)
+    try {
+      await deleteCampaign(campaign.id)
+      await load()
+      onSuccess(`${campaign.name} deleted.`)
     } catch (error) {
       onError(friendlyError(error))
     } finally {
@@ -276,7 +379,36 @@ export function DmDashboard({
     <div className="dm-dashboard">
       <section className="dm-hero">
         <div><span className="eyebrow">Dungeon Master workshop</span><h1>Campaign control room</h1><p>Create player access, build cards, and decide exactly what each character can see.</p></div>
-        <div className="dm-hero__stats"><span><strong>{characters.length}</strong> players</span><span><strong>{spells.length}</strong> spells</span><span><strong>{abilities.length}</strong> abilities</span></div>
+        <div className="dm-hero__stats"><span><strong>{campaignCharacters.length}</strong> players here</span><span><strong>{campaigns.length}</strong> campaigns</span><span><strong>{spells.length + abilities.length}</strong> shared cards</span></div>
+      </section>
+
+      <section className="campaign-bar" aria-label="Campaign controls">
+        <label className="campaign-bar__selection">
+          <span className="eyebrow">Active campaign</span>
+          <Select
+            value={selectedCampaignId}
+            onChange={(event) => {
+              setSelectedCampaignId(event.target.value)
+              setSelectedCharacterId('')
+            }}
+            aria-label="Active campaign"
+          >
+            {campaigns.length === 0 && <option value="">No campaigns yet</option>}
+            {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}
+          </Select>
+        </label>
+        <p className="campaign-bar__copy">{campaignCharacters.length} {campaignCharacters.length === 1 ? 'player' : 'players'} · one shared spell and ability library</p>
+        <div className="campaign-bar__actions">
+          <Button variant="secondary" onClick={() => setEditor({ kind: 'campaign' })}><Plus size={17} /> New campaign</Button>
+          <Button variant="ghost" disabled={!selectedCampaign} onClick={() => selectedCampaign && setEditor({ kind: 'campaign', campaign: selectedCampaign })}><Edit3 size={16} /> Rename</Button>
+          <Button
+            variant="ghost"
+            className="danger-text"
+            disabled={!selectedCampaign || campaigns.length <= 1 || !canDeleteCampaign(characters, selectedCampaign.id)}
+            title={campaigns.length <= 1 ? 'Keep at least one campaign' : selectedCampaign && !canDeleteCampaign(characters, selectedCampaign.id) ? 'Move or delete this campaign’s players first' : 'Delete empty campaign'}
+            onClick={() => selectedCampaign && void deleteCampaignRow(selectedCampaign)}
+          ><Trash2 size={16} /> Delete</Button>
+        </div>
       </section>
 
       <SegmentedControl
@@ -293,14 +425,16 @@ export function DmDashboard({
       {tab === 'players' && (
         <section className="dashboard-section">
           <div className="section-heading">
-            <div><span className="eyebrow">Access & progression</span><h2>Players and characters</h2></div>
-            <Button onClick={() => setEditor({ kind: 'create-character' })}><UserPlus size={18} /> Add player</Button>
+            <div><span className="eyebrow">Access & progression</span><h2>{selectedCampaign?.name ?? 'Players and characters'}</h2></div>
+            <Button disabled={!selectedCampaign} onClick={() => setEditor({ kind: 'create-character' })}><UserPlus size={18} /> Add player</Button>
           </div>
-          {characters.length === 0 ? (
-            <EmptyState icon={<Users />} title="Create your first player" message="Give them a username, one-time activation code, and starting character details." action={<Button onClick={() => setEditor({ kind: 'create-character' })}><Plus size={18} /> Create player</Button>} />
+          {!selectedCampaign ? (
+            <EmptyState icon={<Users />} title="Create your first campaign" message="Campaigns keep player rosters separate while sharing the same card library." action={<Button onClick={() => setEditor({ kind: 'campaign' })}><Plus size={18} /> Create campaign</Button>} />
+          ) : campaignCharacters.length === 0 ? (
+            <EmptyState icon={<Users />} title={`Add a player to ${selectedCampaign.name}`} message="Give them a username, one-time activation code, and starting character details." action={<Button onClick={() => setEditor({ kind: 'create-character' })}><Plus size={18} /> Create player</Button>} />
           ) : (
             <div className="player-admin-grid">
-              {characters.map((character) => (
+              {campaignCharacters.map((character) => (
                 <article className="player-admin-card" key={character.id}>
                   <div className="player-avatar">{initials(character.name)}</div>
                   <div className="player-admin-card__identity">
@@ -328,8 +462,8 @@ export function DmDashboard({
 
       {(tab === 'spells' || tab === 'abilities') && (
         <div className="library-toolbar">
-          <label><span>Assign cards to</span><Select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}><option value="">Choose a character</option>{characters.map((character) => <option key={character.id} value={character.id}>{character.name} — L{character.level} {classLabel(character.class_key)}</option>)}</Select></label>
-          {!selectedCharacter && <span className="toolbar-hint"><Shield size={16} /> Select a character to assign cards.</span>}
+          <label><span>Assign cards to</span><Select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}><option value="">Choose a character</option>{campaignCharacters.map((character) => <option key={character.id} value={character.id}>{character.name} — L{character.level} {classLabel(character.class_key)}</option>)}</Select></label>
+          {!selectedCharacter && <span className="toolbar-hint"><Shield size={16} /> Select a character in {selectedCampaign?.name ?? 'this campaign'} to assign cards.</span>}
         </div>
       )}
 
@@ -404,8 +538,9 @@ export function DmDashboard({
         </section>
       )}
 
-      {editor?.kind === 'create-character' && <Modal title="Add a player" description="They will use the username and activation code for first-time setup." onClose={() => setEditor(null)} wide><CreateCharacterForm busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void act(() => createCharacter(input).then(() => undefined), `${input.characterName} created.`)} /></Modal>}
-      {editor?.kind === 'edit-character' && <Modal title={`Edit ${editor.character.name}`} description="Automatic limits update when class or level changes unless you set an override." onClose={() => setEditor(null)} wide><CharacterEditor character={editor.character} busy={busy} onCancel={() => setEditor(null)} onSubmit={(changes) => void act(() => updateCharacter(editor.character.id, changes), `${changes.name} updated.`)} /></Modal>}
+      {editor?.kind === 'campaign' && <Modal title={editor.campaign ? `Rename ${editor.campaign.name}` : 'Create a campaign'} description="Campaigns separate player rosters. Spells and abilities stay shared." onClose={() => setEditor(null)}><CampaignForm campaign={editor.campaign} busy={busy} onCancel={() => setEditor(null)} onSubmit={(name) => void saveCampaign(name)} /></Modal>}
+      {editor?.kind === 'create-character' && <Modal title="Add a player" description="They will use the username and activation code for first-time setup." onClose={() => setEditor(null)} wide><CreateCharacterForm campaigns={campaigns} initialCampaignId={selectedCampaignId} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void act(() => createCharacter(input).then(() => undefined), `${input.characterName} created.`)} /></Modal>}
+      {editor?.kind === 'edit-character' && <Modal title={`Edit ${editor.character.name}`} description="Automatic limits update when class or level changes unless you set an override." onClose={() => setEditor(null)} wide><CharacterEditor character={editor.character} campaigns={campaigns} busy={busy} onCancel={() => setEditor(null)} onSubmit={(changes) => void act(() => updateCharacter(editor.character.id, changes), `${changes.name} updated.`)} /></Modal>}
       {editor?.kind === 'activation' && <Modal title="Replace activation code" onClose={() => setEditor(null)}><ActivationCodeForm character={editor.character} busy={busy} onCancel={() => setEditor(null)} onSubmit={(code) => void act(() => rotateActivationCode(editor.character.id, code), 'Activation code replaced.')} /></Modal>}
       {editor?.kind === 'spell' && <Modal title={editor.duplicate ? `Duplicate ${editor.spell?.name}` : editor.spell ? `Edit ${editor.spell.name}` : 'Create a custom spell'} description={editor.duplicate ? 'This creates a separate homebrew copy; the SRD original remains unchanged.' : 'Fill in the fields and the app will generate the player card.'} onClose={() => setEditor(null)} wide><SpellEditor key={`${editor.spell?.id ?? 'new'}-${editor.duplicate ? 'copy' : 'edit'}`} spell={editor.spell} duplicate={editor.duplicate} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveSpell(input)} /></Modal>}
       {editor?.kind === 'ability' && <Modal title={editor.ability ? `Edit ${editor.ability.name}` : 'Create an ability card'} description="Use this for class features, feats, magic items, or any custom ability." onClose={() => setEditor(null)} wide><AbilityEditor key={editor.ability?.id ?? 'new'} ability={editor.ability} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveAbility(input)} /></Modal>}

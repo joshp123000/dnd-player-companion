@@ -204,6 +204,12 @@ code { padding: 0.12rem 0.3rem; border-radius: 0.25rem; background: #eef1f5; col
 .dm-hero__stats span { display: flex; flex-direction: column; min-width: 5.5rem; padding: 0.7rem 0.9rem; border: 1px solid rgba(255,255,255,.12); border-radius: 0.65rem; color: #aeb8c9; font-size: 0.72rem; }
 .dm-hero__stats strong { color: #fff; font-size: 1.35rem; }
 
+.campaign-bar { display: grid; grid-template-columns: minmax(13rem, 20rem) 1fr auto; align-items: end; gap: 1rem; margin-bottom: 1rem; padding: 1rem; border: 1px solid #ddd4c3; border-radius: 0.85rem; background: linear-gradient(115deg, #fff 0%, #fbf7ef 100%); box-shadow: var(--shadow-sm); }
+.campaign-bar__selection { min-width: 0; }
+.campaign-bar__selection .eyebrow { margin-bottom: 0.3rem; }
+.campaign-bar__copy { align-self: center; margin: 0; color: var(--muted); font-size: 0.78rem; }
+.campaign-bar__actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.2rem; }
+
 .dashboard-section { margin-top: 1.5rem; }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .section-heading h2 { margin-bottom: 0; }
@@ -330,6 +336,8 @@ code { padding: 0.12rem 0.3rem; border-radius: 0.25rem; background: #eef1f5; col
   .character-hero__meters { width: 100%; }
   .dm-hero__stats { width: 100%; }
   .dm-hero__stats span { flex: 1; }
+  .campaign-bar { grid-template-columns: minmax(13rem, 1fr) auto; }
+  .campaign-bar__copy { grid-column: 1 / -1; grid-row: 2; }
   .filters { grid-template-columns: minmax(14rem, 2fr) repeat(2, minmax(8rem, 1fr)); }
   .filters .search-input { grid-column: 1 / -1; }
 }
@@ -342,6 +350,9 @@ code { padding: 0.12rem 0.3rem; border-radius: 0.25rem; background: #eef1f5; col
   .character-hero, .dm-hero { padding: 1.25rem; }
   .character-hero__meters { grid-template-columns: 1fr; }
   .dm-hero__stats { flex-wrap: wrap; }
+  .campaign-bar { grid-template-columns: 1fr; align-items: stretch; }
+  .campaign-bar__copy { grid-column: auto; grid-row: auto; }
+  .campaign-bar__actions { justify-content: flex-start; flex-wrap: wrap; }
   .card-grid, .player-admin-grid { grid-template-columns: 1fr; }
   .section-heading { align-items: flex-start; }
   .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }

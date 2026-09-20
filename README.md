@@ -8,6 +8,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 
 - Username/password access for players and email/password access for the DM
 - One-time player activation codes—passwords never live in the GitHub repository
+- Multiple campaign groups with separate player rosters and one shared spell/ability library
 - 339 SRD 5.2 spells imported from the supplied JSON source
 - Separate spell and ability entities with structured virtual-card editors
 - Search and filters by name, level, class, and school
@@ -50,6 +51,7 @@ npm run import:spells
 
 - `src/pages/PlayerDashboard.tsx` — player cards and spell choices
 - `src/pages/DmDashboard.tsx` — player management and content workshop
+- `src/lib/campaigns.ts` — campaign roster filtering and deletion safeguards
 - `src/data/class-progression.json` — shared 2024 class limits
 - `supabase/migrations/` — tables, policies, authentication hooks, and guarded spell-selection functions
 - `supabase/seed.sql` — generated SRD spell seed

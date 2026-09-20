@@ -9,9 +9,14 @@ You only need to do the Supabase setup once. After that, changes pushed to `main
 3. Enable email/password authentication and turn **Confirm email** off. Player accounts use private internal login addresses rather than real email inboxes.
 4. Open **SQL Editor** and run the complete contents of:
    1. `supabase/migrations/202609190001_initial_schema.sql`
-   2. `supabase/seed.sql`
+   2. `supabase/migrations/202609200001_campaign_groups.sql`
+   3. `supabase/seed.sql`
 
-The second script imports all 339 SRD spells. Both scripts are safe to re-run; the spell seed updates SRD records without replacing custom spells or changing assignment IDs.
+The final script imports all 339 SRD spells. The spell seed updates SRD records without replacing custom spells or changing assignment IDs.
+
+### Existing installations
+
+If the app was already set up before campaign groups were added, run only `supabase/migrations/202609200001_campaign_groups.sql`. It creates a **Main Campaign** and moves every existing character into it, so no players or card assignments are lost.
 
 ## 2. Create the first DM account
 
@@ -59,7 +64,7 @@ The deployed address will normally be:
 
 1. Sign in to the site with the DM email and password.
 2. Open **Players → Add player**.
-3. Enter a short login username, one-time activation code, character name, class, and level.
+3. Choose the campaign, then enter a short login username, one-time activation code, character name, class, and level.
 4. Privately give that player their username and activation code.
 5. The player opens **First-time setup**, enters both values, and creates a permanent password.
 
@@ -67,6 +72,10 @@ The activation code is stored as a one-way hash and is erased after successful u
 
 ## Normal campaign workflow
 
+- Use the campaign selector above the DM tabs to switch rosters.
+- Choose **New campaign** to add another group. Spells and abilities remain shared between every campaign.
+- Move a character between groups from that character's **Edit** form. Empty campaigns can be deleted; campaigns containing players cannot.
+- If one person plays in both campaigns, create a separate player username and character for each campaign.
 - Update the character's class or level; the default limits recalculate automatically.
 - Use overrides only for feats, multiclassing, house rules, or unusual rewards.
 - Turn on **Preparation unlocked** after a long rest for Clerics, Druids, Paladins, and Wizards.
