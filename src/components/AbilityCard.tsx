@@ -7,15 +7,23 @@ import type { Ability } from '../types'
 export function AbilityCard({
   ability,
   note,
+  badge,
   action,
   secondaryAction,
 }: {
   ability: Ability
   note?: string | null
+  badge?: string
   action?: ReactNode
   secondaryAction?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  const details = [
+    ability.level_required ? `Level ${ability.level_required}` : null,
+    ability.action_type,
+    ability.uses,
+    ability.recharge,
+  ].filter(Boolean).join(' · ')
 
   return (
     <article className="content-card ability-card">
@@ -32,10 +40,10 @@ export function AbilityCard({
           <span className="content-card__title-row">
             <strong>{ability.name}</strong>
             <span className="badge">{ability.category}</span>
+            {badge && <span className="badge badge--accent">{badge}</span>}
           </span>
           <span className="content-card__subtitle">
-            {[ability.action_type, ability.uses, ability.recharge].filter(Boolean).join(' · ') ||
-              'Passive ability'}
+            {details || 'Passive ability'}
           </span>
         </span>
         {open ? <ChevronUp size={20} /> : <ChevronDown size={20} />}

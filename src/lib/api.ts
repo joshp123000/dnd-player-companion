@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import type {
   Ability,
+  AbilityAssignmentType,
   Campaign,
   Character,
   CharacterAbility,
@@ -49,6 +50,12 @@ export interface SpellInput {
 export interface SpellAssignmentSummary {
   spell_id: string
   always_prepared: boolean
+}
+
+export interface AbilityAssignmentSummary {
+  ability_id: string
+  assignment_type: AbilityAssignmentType
+  is_enabled: boolean
 }
 
 export interface AbilityInput {
@@ -160,6 +167,7 @@ export const loadPlayerBundle = async (userId: string): Promise<PlayerBundle> =>
       .from('character_abilities')
       .select('*, ability:abilities(*)')
       .eq('character_id', character.id)
+      .eq('is_enabled', true)
       .order('sort_order'),
   ])
 
@@ -412,6 +420,10 @@ export const listAbilities = async (): Promise<Ability[]> => {
   const { data, error } = await requireSupabase()
     .from('abilities')
     .select('*')
+    .order('is_system', { ascending: false })
+    .order('class_key')
+    .order('level_required')
+    .order('feature_order')
     .order('name')
   if (error) throw error
   return (data ?? []) as Ability[]
@@ -443,20 +455,16 @@ export const deleteAbility = async (abilityId: string) => {
   if (error) throw error
 }
 
-export const assignAbility = async (characterId: string, abilityId: string) => {
-  const { error } = await requireSupabase().from('character_abilities').upsert(
-    { character_id: characterId, ability_id: abilityId },
-    { onConflict: 'character_id,ability_id' },
-  )
-  if (error) throw error
-}
-
-export const removeAbilityAssignment = async (characterId: string, abilityId: string) => {
-  const { error } = await requireSupabase()
-    .from('character_abilities')
-    .delete()
-    .eq('character_id', characterId)
-    .eq('ability_id', abilityId)
+export const setAbilityAssignment = async (
+  characterId: string,
+  abilityId: string,
+  enabled: boolean,
+) => {
+  const { error } = await requireSupabase().rpc('dm_set_ability_override', {
+    p_character_id: characterId,
+    p_ability_id: abilityId,
+    p_enabled: enabled,
+  })
   if (error) throw error
 }
 
@@ -472,11 +480,17 @@ export const listCharacterSpellAssignments = async (characterId: string): Promis
   }))
 }
 
-export const listCharacterAbilityIds = async (characterId: string): Promise<string[]> => {
+export const listCharacterAbilityAssignments = async (
+  characterId: string,
+): Promise<AbilityAssignmentSummary[]> => {
   const { data, error } = await requireSupabase()
     .from('character_abilities')
-    .select('ability_id')
+    .select('ability_id, assignment_type, is_enabled')
     .eq('character_id', characterId)
   if (error) throw error
-  return (data ?? []).map((row) => String(row.ability_id))
+  return (data ?? []).map((row) => ({
+    ability_id: String(row.ability_id),
+    assignment_type: row.assignment_type as AbilityAssignmentType,
+    is_enabled: Boolean(row.is_enabled),
+  }))
 }

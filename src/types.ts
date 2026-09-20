@@ -1,5 +1,7 @@
 export type Role = 'dm' | 'player'
 export type SpellSource = 'srd' | 'custom'
+export type AbilitySource = 'srd' | 'book' | 'custom'
+export type AbilityAssignmentType = 'automatic' | 'dm_included' | 'dm_excluded'
 export type SelectionMode = 'daily' | 'level_choice' | 'spellbook' | 'none'
 
 export interface Profile {
@@ -86,8 +88,14 @@ export interface CharacterSpell {
 
 export interface Ability {
   id: string
+  slug: string | null
   name: string
   category: string
+  class_key: string | null
+  level_required: number | null
+  feature_order: number
+  is_system: boolean
+  source_type: AbilitySource
   action_type: string | null
   uses: string | null
   recharge: string | null
@@ -95,7 +103,7 @@ export interface Ability {
   description: string
   source: string | null
   tags: string[]
-  created_by: string
+  created_by: string | null
   created_at: string
   updated_at: string
 }
@@ -105,6 +113,8 @@ export interface CharacterAbility {
   character_id: string
   ability_id: string
   sort_order: number
+  assignment_type: AbilityAssignmentType
+  is_enabled: boolean
   notes: string | null
   ability?: Ability
 }

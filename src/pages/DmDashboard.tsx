@@ -25,7 +25,6 @@ import { SpellEditor } from '../components/SpellEditor'
 import { SpellFilters } from '../components/SpellFilters'
 import { Button, EmptyState, Field, Input, LoadingState, Modal, SegmentedControl, Select } from '../components/ui'
 import {
-  assignAbility,
   assignSpell,
   createAbility,
   createCampaign,
@@ -37,13 +36,13 @@ import {
   deleteSpell,
   listAbilities,
   listCampaigns,
-  listCharacterAbilityIds,
+  listCharacterAbilityAssignments,
   listCharacterSpellAssignments,
   listCharacters,
   listSpells,
-  removeAbilityAssignment,
   removeSpellAssignment,
   resetPlayerLogin,
+  setAbilityAssignment,
   setAllChoicesUnlocked,
   setAllPreparationUnlocked,
   updateAbility,
@@ -51,6 +50,7 @@ import {
   updateCharacter,
   updateSpell,
   updateSpellAlwaysPrepared,
+  type AbilityAssignmentSummary,
   type AbilityInput,
   type SpellInput,
 } from '../lib/api'
@@ -246,9 +246,10 @@ export function DmDashboard({
   const [selectedCharacterId, setSelectedCharacterId] = useState('')
   const [assignedSpellIds, setAssignedSpellIds] = useState<Set<string>>(new Set())
   const [alwaysPreparedSpellIds, setAlwaysPreparedSpellIds] = useState<Set<string>>(new Set())
-  const [assignedAbilityIds, setAssignedAbilityIds] = useState<Set<string>>(new Set())
+  const [abilityAssignments, setAbilityAssignments] = useState<Map<string, AbilityAssignmentSummary>>(new Map())
   const [filters, setFilters] = useState<FilterValues>(initialFilters)
   const [abilitySearch, setAbilitySearch] = useState('')
+  const [abilityClassFilter, setAbilityClassFilter] = useState('selected')
   const [visibleSpells, setVisibleSpells] = useState(40)
   const [editor, setEditor] = useState<EditorState>(null)
   const [loading, setLoading] = useState(true)
@@ -260,6 +261,11 @@ export function DmDashboard({
     [characters, selectedCampaignId],
   )
   const selectedCharacter = campaignCharacters.find((character) => character.id === selectedCharacterId) ?? null
+  const assignedAbilityIds = useMemo(() => new Set(
+    [...abilityAssignments.values()]
+      .filter((assignment) => assignment.is_enabled)
+      .map((assignment) => assignment.ability_id),
+  ), [abilityAssignments])
   const allPreparationUnlocked = characters.length > 0 && characters.every(
     (character) => character.preparation_unlocked,
   )
@@ -298,13 +304,13 @@ export function DmDashboard({
     if (!characterId) {
       setAssignedSpellIds(new Set())
       setAlwaysPreparedSpellIds(new Set())
-      setAssignedAbilityIds(new Set())
+      setAbilityAssignments(new Map())
       return
     }
     try {
-      const [spellAssignments, abilityIds] = await Promise.all([
+      const [spellAssignments, abilityRows] = await Promise.all([
         listCharacterSpellAssignments(characterId),
-        listCharacterAbilityIds(characterId),
+        listCharacterAbilityAssignments(characterId),
       ])
       setAssignedSpellIds(new Set(spellAssignments.map((assignment) => assignment.spell_id)))
       setAlwaysPreparedSpellIds(new Set(
@@ -312,7 +318,9 @@ export function DmDashboard({
           .filter((assignment) => assignment.always_prepared)
           .map((assignment) => assignment.spell_id),
       ))
-      setAssignedAbilityIds(new Set(abilityIds))
+      setAbilityAssignments(new Map(
+        abilityRows.map((assignment) => [assignment.ability_id, assignment]),
+      ))
     } catch (error) {
       onError(friendlyError(error))
     }
@@ -331,11 +339,16 @@ export function DmDashboard({
   const filteredSpells = useMemo(() => filterSpells(spells, filters), [spells, filters])
   const filteredAbilities = useMemo(() => {
     const search = abilitySearch.trim().toLowerCase()
-    if (!search) return abilities
     return abilities.filter((ability) =>
-      `${ability.name} ${ability.category} ${ability.tags.join(' ')}`.toLowerCase().includes(search),
+      (abilityClassFilter === 'all'
+        || (abilityClassFilter === 'selected'
+          ? !ability.is_system || ability.class_key === selectedCharacter?.class_key
+          : abilityClassFilter === 'custom'
+            ? !ability.is_system
+          : ability.class_key === abilityClassFilter))
+      && (!search || `${ability.name} ${ability.category} ${ability.tags.join(' ')}`.toLowerCase().includes(search)),
     )
-  }, [abilities, abilitySearch])
+  }, [abilities, abilityClassFilter, abilitySearch, selectedCharacter?.class_key])
 
   const act = async (operation: () => Promise<void>, success: string, close = true) => {
     setBusy(true)
@@ -642,20 +655,44 @@ export function DmDashboard({
       {tab === 'abilities' && (
         <section className="dashboard-section">
           <div className="section-heading"><div><span className="eyebrow">Features, feats & items</span><h2>Ability library</h2></div><Button onClick={() => setEditor({ kind: 'ability' })}><Plus size={18} /> New ability</Button></div>
-          <label className="search-input standalone-search"><Search size={18} /><Input aria-label="Search abilities" placeholder="Search abilities…" value={abilitySearch} onChange={(event) => setAbilitySearch(event.target.value)} /></label>
+          <div className="form-grid form-grid--2 ability-library-filters">
+            <Field label="Search abilities">
+              <span className="search-input"><Search size={18} /><Input aria-label="Search abilities" placeholder="Search by name, class, or tag…" value={abilitySearch} onChange={(event) => setAbilitySearch(event.target.value)} /></span>
+            </Field>
+            <Field label="Show abilities for">
+              <Select value={abilityClassFilter} onChange={(event) => setAbilityClassFilter(event.target.value)}>
+                <option value="selected">{selectedCharacter ? `${classLabel(selectedCharacter.class_key)} + custom` : 'Current character + custom'}</option>
+                <option value="custom">Custom cards only</option>
+                <option value="all">Every class</option>
+                {CHARACTER_CLASSES.map((key) => <option key={key} value={key}>{classLabel(key)}</option>)}
+              </Select>
+            </Field>
+          </div>
+          <div className="callout"><strong>Automatic class features</strong><p>Built-in cards follow the selected character’s class and level. Hide one for a house rule, restore it later, or add any other card as a DM override.</p></div>
           <div className="library-summary"><span>{filteredAbilities.length} matching abilities</span><span>{assignedAbilityIds.size} assigned to {selectedCharacter?.name ?? 'no player'}</span></div>
           {filteredAbilities.length === 0 ? (
             <EmptyState icon={<Zap />} title="No abilities yet" message="Create a reusable virtual card for a class feature, feat, item, or homebrew power." action={<Button onClick={() => setEditor({ kind: 'ability' })}><Sparkles size={18} /> Create ability</Button>} />
           ) : (
             <div className="card-grid">
               {filteredAbilities.map((ability) => {
-                const assigned = assignedAbilityIds.has(ability.id)
+                const assignment = abilityAssignments.get(ability.id)
+                const assigned = assignment?.is_enabled ?? false
+                const excluded = assignment?.assignment_type === 'dm_excluded'
+                const automatic = assignment?.assignment_type === 'automatic'
+                const nextEnabled = !assigned
+                const actionLabel = excluded ? 'Restore' : assigned ? automatic ? 'Hide' : 'Remove' : 'Add'
+                const assignmentBadge = excluded ? 'Hidden by DM' : automatic ? 'Automatic' : assigned ? 'DM override' : undefined
                 return (
                   <AbilityCard
                     ability={ability}
                     key={ability.id}
-                    secondaryAction={<div className="card-action-group"><Button variant="ghost" onClick={() => setEditor({ kind: 'ability', ability })}><Edit3 size={16} /> Edit</Button><Button variant="ghost" className="danger-text" onClick={() => { if (window.confirm(`Delete ${ability.name}?`)) void act(() => deleteAbility(ability.id), `${ability.name} deleted.`, false) }}><Trash2 size={16} /></Button></div>}
-                    action={assigned ? <Button variant="secondary" disabled={!selectedCharacter || busy} onClick={() => selectedCharacter && void act(() => removeAbilityAssignment(selectedCharacter.id, ability.id), `${ability.name} removed from ${selectedCharacter.name}.`, false)}><X size={17} /> Remove</Button> : <Button disabled={!selectedCharacter} onClick={() => selectedCharacter && void act(() => assignAbility(selectedCharacter.id, ability.id), `${ability.name} assigned to ${selectedCharacter.name}.`, false)}><Check size={17} /> Assign</Button>}
+                    badge={assignmentBadge}
+                    secondaryAction={ability.is_system ? undefined : <div className="card-action-group"><Button variant="ghost" onClick={() => setEditor({ kind: 'ability', ability })}><Edit3 size={16} /> Edit</Button><Button variant="ghost" className="danger-text" onClick={() => { if (window.confirm(`Delete ${ability.name}?`)) void act(() => deleteAbility(ability.id), `${ability.name} deleted.`, false) }}><Trash2 size={16} /></Button></div>}
+                    action={<Button variant={nextEnabled ? 'primary' : 'secondary'} disabled={!selectedCharacter || busy} onClick={() => selectedCharacter && void act(
+                      () => setAbilityAssignment(selectedCharacter.id, ability.id, nextEnabled),
+                      nextEnabled ? `${ability.name} shown to ${selectedCharacter.name}.` : `${ability.name} hidden from ${selectedCharacter.name}.`,
+                      false,
+                    )}>{nextEnabled ? <Check size={17} /> : <X size={17} />} {actionLabel}</Button>}
                   />
                 )
               })}
