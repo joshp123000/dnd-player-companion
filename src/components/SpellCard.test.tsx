@@ -1,7 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
 import type { Spell } from '../types'
 import { SpellCard } from './SpellCard'
+
+afterEach(cleanup)
 
 const spell: Spell = {
   id: 'spell-id',
@@ -41,5 +43,21 @@ describe('SpellCard', () => {
     expect(screen.getByText(/Dexterity saving throw/)).toBeInTheDocument()
     expect(screen.getByText('Using a Higher-Level Slot')).toBeInTheDocument()
     expect(screen.getByText(/bat guano/)).toBeInTheDocument()
+  })
+
+  it('does not show stale cantrip upgrade text on a leveled spell', () => {
+    render(<SpellCard spell={{ ...spell, cantrip_upgrade: 'This should only appear on a cantrip.' }} defaultOpen />)
+
+    expect(screen.getByText('Using a Higher-Level Slot')).toBeInTheDocument()
+    expect(screen.queryByText('Cantrip Upgrade')).not.toBeInTheDocument()
+    expect(screen.queryByText('This should only appear on a cantrip.')).not.toBeInTheDocument()
+  })
+
+  it('does not show stale higher-level text on a cantrip', () => {
+    render(<SpellCard spell={{ ...spell, level: 0, higher_level: 'Stale slot text.', cantrip_upgrade: 'Damage increases at higher character levels.' }} defaultOpen />)
+
+    expect(screen.getByText('Cantrip Upgrade')).toBeInTheDocument()
+    expect(screen.queryByText('Using a Higher-Level Slot')).not.toBeInTheDocument()
+    expect(screen.queryByText('Stale slot text.')).not.toBeInTheDocument()
   })
 })

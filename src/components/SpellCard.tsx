@@ -87,13 +87,13 @@ export function SpellCard({
           <div className="markdown-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{spell.description}</ReactMarkdown>
           </div>
-          {spell.higher_level && (
+          {spell.level > 0 && spell.higher_level && (
             <div className="callout">
               <strong>Using a Higher-Level Slot</strong>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{spell.higher_level}</ReactMarkdown>
             </div>
           )}
-          {spell.cantrip_upgrade && (
+          {spell.level === 0 && spell.cantrip_upgrade && (
             <div className="callout">
               <strong>Cantrip Upgrade</strong>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{spell.cantrip_upgrade}</ReactMarkdown>

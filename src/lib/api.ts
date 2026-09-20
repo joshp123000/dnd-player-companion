@@ -11,6 +11,7 @@ import type {
   Spell,
 } from '../types'
 import { loginIdentifierToEmail, normalizeUsername, usernameToEmail } from './auth'
+import { advancementFieldsForLevel } from './spellAdvancement'
 import { requireSupabase } from './supabase'
 import type { ThemeKey } from './themes'
 
@@ -328,9 +329,10 @@ export const listSpells = async (): Promise<Spell[]> => {
 }
 
 export const createSpell = async (input: SpellInput): Promise<Spell> => {
+  const advancement = advancementFieldsForLevel(input.level, input.higher_level, input.cantrip_upgrade)
   const { data, error } = await requireSupabase()
     .from('spells')
-    .insert({ ...input, source_type: 'custom' })
+    .insert({ ...input, ...advancement, source_type: 'custom' })
     .select('*')
     .single()
   if (error) throw error
@@ -338,9 +340,10 @@ export const createSpell = async (input: SpellInput): Promise<Spell> => {
 }
 
 export const updateSpell = async (spellId: string, input: SpellInput): Promise<Spell> => {
+  const advancement = advancementFieldsForLevel(input.level, input.higher_level, input.cantrip_upgrade)
   const { data, error } = await requireSupabase()
     .from('spells')
-    .update(input)
+    .update({ ...input, ...advancement })
     .eq('id', spellId)
     .eq('source_type', 'custom')
     .select('*')

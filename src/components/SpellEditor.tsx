@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { Spell } from '../types'
 import type { SpellInput } from '../lib/api'
 import { SPELLCASTING_CLASSES, classLabel } from '../lib/rules'
+import { advancementFieldsForLevel } from '../lib/spellAdvancement'
 import { Button, Field, Input, Select } from './ui'
 
 const COMPONENTS = ['v', 's', 'm']
@@ -50,6 +51,7 @@ export function SpellEditor({
     event.preventDefault()
     onSubmit({
       ...form,
+      ...advancementFieldsForLevel(form.level, form.higher_level, form.cantrip_upgrade),
       name: form.name.trim(),
       description: form.description.trim(),
       range: form.range.trim(),
