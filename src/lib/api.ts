@@ -92,6 +92,22 @@ export const signOut = async () => {
   if (error) throw error
 }
 
+export const changePassword = async (currentPassword: string, newPassword: string) => {
+  const client = requireSupabase()
+  const { data, error: userError } = await client.auth.getUser()
+  if (userError) throw userError
+  if (!data.user?.email) throw new Error('Your login could not be verified. Please sign in again.')
+
+  const { error: signInError } = await client.auth.signInWithPassword({
+    email: data.user.email,
+    password: currentPassword,
+  })
+  if (signInError) throw new Error('The current password is incorrect.')
+
+  const { error: updateError } = await client.auth.updateUser({ password: newPassword })
+  if (updateError) throw updateError
+}
+
 export const loadProfile = async (userId: string): Promise<Profile> => {
   const { data, error } = await requireSupabase()
     .from('profiles')
@@ -274,9 +290,14 @@ export const updateCharacter = async (characterId: string, changes: Partial<Char
   if (error) throw error
 }
 
-export const rotateActivationCode = async (characterId: string, activationCode: string) => {
-  const { error } = await requireSupabase().rpc('dm_rotate_activation_code', {
+export const resetPlayerLogin = async (
+  characterId: string,
+  username: string,
+  activationCode: string,
+) => {
+  const { error } = await requireSupabase().rpc('dm_reset_player_login', {
     p_character_id: characterId,
+    p_username: normalizeUsername(username),
     p_activation_code: activationCode.trim(),
   })
   if (error) throw error

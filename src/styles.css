@@ -116,6 +116,7 @@ h3 { margin-bottom: 0.4rem; }
 .editor-form { display: flex; flex-direction: column; gap: 1.1rem; }
 .form-message { padding: 0.75rem 0.85rem; border-radius: 0.55rem; font-size: 0.85rem; line-height: 1.45; }
 .form-message--error { background: var(--red-soft); color: var(--red); border: 1px solid #f5c7c2; }
+.form-message--info { background: var(--blue-soft); color: #31568c; border: 1px solid #c8daf5; }
 .form-message--success { background: var(--green-soft); color: var(--green); border: 1px solid #b7e3cc; }
 .form-tip { margin: 0; padding: 0.75rem; background: var(--blue-soft); color: #31568c; border-radius: 0.55rem; font-size: 0.84rem; }
 
@@ -163,6 +164,7 @@ h3 { margin-bottom: 0.4rem; }
 .auth-card .segmented { width: 100%; margin-top: 1.25rem; }
 .auth-card .segmented button { flex: 1; }
 .auth-card .form-stack > .button { margin-top: 0.2rem; }
+.auth-help { margin: 0; color: var(--muted); font-size: 0.76rem; line-height: 1.5; text-align: center; }
 
 .setup-page { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; background: radial-gradient(circle at top, #263654, var(--navy) 55%); }
 .setup-card { max-width: 42rem; padding: clamp(1.6rem, 5vw, 3rem); border-radius: 1rem; background: white; box-shadow: var(--shadow-lg); }

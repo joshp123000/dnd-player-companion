@@ -41,7 +41,7 @@ export function CharacterEditor({
     <form className="editor-form" onSubmit={submit}>
       <div className="form-grid form-grid--3">
         <Field label="Character name"><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></Field>
-        <Field label="Login username" hint="The login name cannot be changed after creation."><Input value={form.login_username} disabled /></Field>
+        <Field label="Login username" hint="Use Reset login on the player card to change this safely."><Input value={form.login_username} disabled /></Field>
         <Field label="Campaign">
           <Select value={form.campaign_id} onChange={(event) => setForm({ ...form, campaign_id: event.target.value })} required>
             {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}

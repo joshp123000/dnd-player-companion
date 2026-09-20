@@ -10,13 +10,14 @@ You only need to do the Supabase setup once. After that, changes pushed to `main
 4. Open **SQL Editor** and run the complete contents of:
    1. `supabase/migrations/202609190001_initial_schema.sql`
    2. `supabase/migrations/202609200001_campaign_groups.sql`
-   3. `supabase/seed.sql`
+   3. `supabase/migrations/202609200002_account_recovery.sql`
+   4. `supabase/seed.sql`
 
 The final script imports all 339 SRD spells. The spell seed updates SRD records without replacing custom spells or changing assignment IDs.
 
 ### Existing installations
 
-If the app was already set up before campaign groups were added, run only `supabase/migrations/202609200001_campaign_groups.sql`. It creates a **Main Campaign** and moves every existing character into it, so no players or card assignments are lost.
+For the currently deployed app, run `supabase/migrations/202609200002_account_recovery.sql` once to add the in-app login reset. If an older installation does not have campaign groups yet, run `202609200001_campaign_groups.sql` first and then the account-recovery migration. Both preserve existing players and card assignments.
 
 ## 2. Create the first DM account
 
@@ -87,11 +88,16 @@ The activation code is stored as a one-way hash and is erased after successful u
 
 ## Password recovery for a player
 
-Player accounts intentionally do not use real email addresses. If someone forgets a password:
+Players who know their current password can choose **Account → Change password** while signed in.
 
-1. In Supabase **Authentication → Users**, delete that player's internal account (`username@dnd-player.invalid`). The character and assigned cards remain.
-2. In the DM site's player editor, create a new activation code.
-3. Have the player repeat **First-time setup** and choose a new password.
+Player accounts intentionally do not use real email addresses, so forgotten passwords use a DM-controlled reset:
+
+1. On the DM **Players** page, choose **Reset login** on that player's card.
+2. Keep or change the username and enter a new one-time activation code.
+3. Give the player those details privately.
+4. The player chooses **First-time setup** and creates a new private password.
+
+The reset removes the old login and sessions, but preserves the character, campaign membership, spells, abilities, and DM settings. For a player who has not activated yet, **Access setup** can change the username or unused activation code without deleting anything.
 
 ## Updating the spell source
 

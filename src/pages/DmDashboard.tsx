@@ -43,7 +43,7 @@ import {
   listSpells,
   removeAbilityAssignment,
   removeSpellAssignment,
-  rotateActivationCode,
+  resetPlayerLogin,
   setAllChoicesUnlocked,
   setAllPreparationUnlocked,
   updateAbility,
@@ -64,7 +64,7 @@ type EditorState =
   | { kind: 'campaign'; campaign?: Campaign }
   | { kind: 'create-character' }
   | { kind: 'edit-character'; character: Character }
-  | { kind: 'activation'; character: Character }
+  | { kind: 'player-access'; character: Character }
   | { kind: 'spell'; spell?: Spell; duplicate?: boolean }
   | { kind: 'ability'; ability?: Ability }
   | { kind: 'assign-spell'; spell: Spell }
@@ -153,7 +153,7 @@ function CampaignForm({
   )
 }
 
-function ActivationCodeForm({
+function PlayerAccessForm({
   character,
   busy,
   onSubmit,
@@ -161,17 +161,42 @@ function ActivationCodeForm({
 }: {
   character: Character
   busy: boolean
-  onSubmit: (code: string) => void
+  onSubmit: (username: string, code: string) => void
   onCancel: () => void
 }) {
+  const [username, setUsername] = useState(character.login_username)
   const [code, setCode] = useState('')
+  const active = Boolean(character.user_id)
+
   return (
-    <form className="editor-form" onSubmit={(event) => { event.preventDefault(); onSubmit(code) }}>
-      <p>Replace the unused activation code for <strong>{character.login_username}</strong>.</p>
-      <Field label="New activation code" hint="The old code will stop working immediately.">
-        <Input minLength={6} value={code} onChange={(event) => setCode(event.target.value)} required autoFocus />
+    <form className="editor-form" onSubmit={(event) => {
+      event.preventDefault()
+      if (active && !window.confirm(`Reset ${character.name}'s login? Their current password and signed-in sessions will stop working.`)) return
+      onSubmit(username, code)
+    }}>
+      <div className={`form-message ${active ? 'form-message--error' : 'form-message--info'}`}>
+        {active
+          ? <>This removes only the current login. <strong>The character, campaign, spells, and abilities will not be deleted.</strong></>
+          : <>Update the username or replace the unused one-time code before this player activates.</>}
+      </div>
+      <Field label="Player username" hint="You may keep the current username or enter a new one.">
+        <Input
+          pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}"
+          value={username}
+          onChange={(event) => setUsername(event.target.value.toLowerCase())}
+          required
+          autoFocus
+        />
       </Field>
-      <div className="form-actions"><Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Replace code'}</Button></div>
+      <Field label="New one-time activation code" hint="At least 6 characters. Copy it now; it cannot be viewed later.">
+        <Input minLength={6} value={code} onChange={(event) => setCode(event.target.value)} required />
+      </Field>
+      <div className="form-actions">
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" variant={active ? 'danger' : 'primary'} disabled={busy}>
+          {busy ? 'Saving…' : active ? 'Reset player login' : 'Save access details'}
+        </Button>
+      </div>
     </form>
   )
 }
@@ -508,7 +533,7 @@ export function DmDashboard({
                   </dl>
                   <div className="player-admin-card__actions">
                     <Button variant="secondary" onClick={() => setEditor({ kind: 'edit-character', character })}><Edit3 size={16} /> Edit</Button>
-                    {!character.user_id && <Button variant="ghost" onClick={() => setEditor({ kind: 'activation', character })}><KeyRound size={16} /> New code</Button>}
+                    <Button variant="ghost" onClick={() => setEditor({ kind: 'player-access', character })}><KeyRound size={16} /> {character.user_id ? 'Reset login' : 'Access setup'}</Button>
                     <Button variant="ghost" onClick={() => { setSelectedCharacterId(character.id); setTab('spells') }}><BookOpenText size={16} /> Cards</Button>
                     <Button variant="ghost" className="danger-text" onClick={() => void deleteCharacterRow(character)}><Trash2 size={16} /> Delete</Button>
                   </div>
@@ -600,7 +625,25 @@ export function DmDashboard({
       {editor?.kind === 'campaign' && <Modal title={editor.campaign ? `Rename ${editor.campaign.name}` : 'Create a campaign'} description="Campaigns separate player rosters. Spells and abilities stay shared." onClose={() => setEditor(null)}><CampaignForm campaign={editor.campaign} busy={busy} onCancel={() => setEditor(null)} onSubmit={(name) => void saveCampaign(name)} /></Modal>}
       {editor?.kind === 'create-character' && <Modal title="Add a player" description="They will use the username and activation code for first-time setup." onClose={() => setEditor(null)} wide><CreateCharacterForm campaigns={campaigns} initialCampaignId={selectedCampaignId} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void act(() => createCharacter(input).then(() => undefined), `${input.characterName} created.`)} /></Modal>}
       {editor?.kind === 'edit-character' && <Modal title={`Edit ${editor.character.name}`} description="Automatic limits update when class or level changes unless you set an override." onClose={() => setEditor(null)} wide><CharacterEditor character={editor.character} campaigns={campaigns} busy={busy} onCancel={() => setEditor(null)} onSubmit={(changes) => void act(() => updateCharacter(editor.character.id, changes), `${changes.name} updated.`)} /></Modal>}
-      {editor?.kind === 'activation' && <Modal title="Replace activation code" onClose={() => setEditor(null)}><ActivationCodeForm character={editor.character} busy={busy} onCancel={() => setEditor(null)} onSubmit={(code) => void act(() => rotateActivationCode(editor.character.id, code), 'Activation code replaced.')} /></Modal>}
+      {editor?.kind === 'player-access' && (
+        <Modal
+          title={editor.character.user_id ? `Reset ${editor.character.name}'s login` : `Update ${editor.character.name}'s access`}
+          description={editor.character.user_id ? 'They will reactivate through First-time setup and choose a new private password.' : 'Set the username and one-time code they will use for First-time setup.'}
+          onClose={() => setEditor(null)}
+        >
+          <PlayerAccessForm
+            character={editor.character}
+            busy={busy}
+            onCancel={() => setEditor(null)}
+            onSubmit={(username, code) => void act(
+              () => resetPlayerLogin(editor.character.id, username, code),
+              editor.character.user_id
+                ? `${editor.character.name}'s login was reset. Give them the username and new one-time code.`
+                : `${editor.character.name}'s access details were updated.`,
+            )}
+          />
+        </Modal>
+      )}
       {editor?.kind === 'spell' && <Modal title={editor.duplicate ? `Duplicate ${editor.spell?.name}` : editor.spell ? `Edit ${editor.spell.name}` : 'Create a custom spell'} description={editor.duplicate ? 'This creates a separate homebrew copy; the SRD original remains unchanged.' : 'Fill in the fields and the app will generate the player card.'} onClose={() => setEditor(null)} wide><SpellEditor key={`${editor.spell?.id ?? 'new'}-${editor.duplicate ? 'copy' : 'edit'}`} spell={editor.spell} duplicate={editor.duplicate} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveSpell(input)} /></Modal>}
       {editor?.kind === 'ability' && <Modal title={editor.ability ? `Edit ${editor.ability.name}` : 'Create an ability card'} description="Use this for class features, feats, magic items, or any custom ability." onClose={() => setEditor(null)} wide><AbilityEditor key={editor.ability?.id ?? 'new'} ability={editor.ability} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveAbility(input)} /></Modal>}
       {editor?.kind === 'assign-spell' && selectedCharacter && <Modal title="Assign spell" onClose={() => setEditor(null)}><AssignmentForm spell={editor.spell} character={selectedCharacter} busy={busy} onCancel={() => setEditor(null)} onSubmit={(prepared, alwaysPrepared) => void act(() => assignSpell(selectedCharacter.id, editor.spell.id, { prepared, alwaysPrepared }), `${editor.spell.name} assigned to ${selectedCharacter.name}.`)} /></Modal>}

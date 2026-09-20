@@ -8,6 +8,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 
 - Username/password access for players and email/password access for the DM
 - One-time player activation codes—passwords never live in the GitHub repository
+- Self-service password changes plus DM-controlled account recovery and username changes
 - Multiple campaign groups with separate player rosters and one shared spell/ability library
 - 339 SRD 5.2 spells imported from the supplied JSON source
 - Separate spell and ability entities with structured virtual-card editors
@@ -55,7 +56,7 @@ npm run import:spells
 - `src/pages/DmDashboard.tsx` — player management and content workshop
 - `src/lib/campaigns.ts` — campaign roster filtering and deletion safeguards
 - `src/data/class-progression.json` — shared 2024 class limits
-- `supabase/migrations/` — tables, policies, authentication hooks, and guarded spell-selection functions
+- `supabase/migrations/` — tables, policies, authentication hooks, account recovery, and guarded spell-selection functions
 - `supabase/seed.sql` — generated SRD spell seed
 - `scripts/import-spells.mjs` — repeatable SRD JSON importer
 - `.github/workflows/deploy-pages.yml` — tested GitHub Pages deployment

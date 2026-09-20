@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AppShell } from './components/AppShell'
 import { LoadingState } from './components/ui'
-import { loadProfile, signOut } from './lib/api'
+import { changePassword, loadProfile, signOut } from './lib/api'
 import { friendlyError } from './lib/format'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { LoginPage } from './pages/LoginPage'
@@ -78,9 +78,18 @@ function App() {
     }
   }
 
+  const handleChangePassword = async (currentPassword: string, newPassword: string) => {
+    await changePassword(currentPassword, newPassword)
+    notifySuccess('Your password has been changed.')
+  }
+
   return (
     <>
-      <AppShell profile={profile} onSignOut={() => void handleSignOut()}>
+      <AppShell
+        profile={profile}
+        onChangePassword={handleChangePassword}
+        onSignOut={() => void handleSignOut()}
+      >
         <Suspense fallback={<LoadingState label="Opening your dashboard…" />}>
           {profile.role === 'dm' ? (
             <DmDashboard

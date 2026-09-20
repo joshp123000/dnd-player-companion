@@ -131,6 +131,9 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: () => void }) 
             {mode === 'activate' && <UserPlus size={18} />}
             {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Activate account'}
           </Button>
+          {mode === 'login' && (
+            <p className="auth-help">Forgot your password? Ask your DM to reset your login, then use <strong>First-time setup</strong> with the new one-time code.</p>
+          )}
         </form>
       </section>
     </div>
