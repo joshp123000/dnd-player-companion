@@ -12,6 +12,7 @@ import type {
 } from '../types'
 import { loginIdentifierToEmail, normalizeUsername, usernameToEmail } from './auth'
 import { advancementFieldsForLevel } from './spellAdvancement'
+import { alwaysPreparedPatch } from './spellAssignments'
 import { requireSupabase } from './supabase'
 import type { ThemeKey } from './themes'
 
@@ -43,6 +44,11 @@ export interface SpellInput {
   cantrip_upgrade: string | null
   source_label: string
   original_spell_id?: string | null
+}
+
+export interface SpellAssignmentSummary {
+  spell_id: string
+  always_prepared: boolean
 }
 
 export interface AbilityInput {
@@ -389,6 +395,19 @@ export const removeSpellAssignment = async (characterId: string, spellId: string
   if (error) throw error
 }
 
+export const updateSpellAlwaysPrepared = async (
+  characterId: string,
+  spellId: string,
+  alwaysPrepared: boolean,
+) => {
+  const { error } = await requireSupabase()
+    .from('character_spells')
+    .update(alwaysPreparedPatch(alwaysPrepared))
+    .eq('character_id', characterId)
+    .eq('spell_id', spellId)
+  if (error) throw error
+}
+
 export const listAbilities = async (): Promise<Ability[]> => {
   const { data, error } = await requireSupabase()
     .from('abilities')
@@ -441,13 +460,16 @@ export const removeAbilityAssignment = async (characterId: string, abilityId: st
   if (error) throw error
 }
 
-export const listCharacterSpellIds = async (characterId: string): Promise<string[]> => {
+export const listCharacterSpellAssignments = async (characterId: string): Promise<SpellAssignmentSummary[]> => {
   const { data, error } = await requireSupabase()
     .from('character_spells')
-    .select('spell_id')
+    .select('spell_id, always_prepared')
     .eq('character_id', characterId)
   if (error) throw error
-  return (data ?? []).map((row) => String(row.spell_id))
+  return (data ?? []).map((row) => ({
+    spell_id: String(row.spell_id),
+    always_prepared: Boolean(row.always_prepared),
+  }))
 }
 
 export const listCharacterAbilityIds = async (characterId: string): Promise<string[]> => {

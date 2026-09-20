@@ -38,7 +38,7 @@ import {
   listAbilities,
   listCampaigns,
   listCharacterAbilityIds,
-  listCharacterSpellIds,
+  listCharacterSpellAssignments,
   listCharacters,
   listSpells,
   removeAbilityAssignment,
@@ -50,6 +50,7 @@ import {
   updateCampaign,
   updateCharacter,
   updateSpell,
+  updateSpellAlwaysPrepared,
   type AbilityInput,
   type SpellInput,
 } from '../lib/api'
@@ -244,6 +245,7 @@ export function DmDashboard({
   const [selectedCampaignId, setSelectedCampaignId] = useState('')
   const [selectedCharacterId, setSelectedCharacterId] = useState('')
   const [assignedSpellIds, setAssignedSpellIds] = useState<Set<string>>(new Set())
+  const [alwaysPreparedSpellIds, setAlwaysPreparedSpellIds] = useState<Set<string>>(new Set())
   const [assignedAbilityIds, setAssignedAbilityIds] = useState<Set<string>>(new Set())
   const [filters, setFilters] = useState<FilterValues>(initialFilters)
   const [abilitySearch, setAbilitySearch] = useState('')
@@ -295,15 +297,21 @@ export function DmDashboard({
   const loadAssignments = useCallback(async (characterId: string) => {
     if (!characterId) {
       setAssignedSpellIds(new Set())
+      setAlwaysPreparedSpellIds(new Set())
       setAssignedAbilityIds(new Set())
       return
     }
     try {
-      const [spellIds, abilityIds] = await Promise.all([
-        listCharacterSpellIds(characterId),
+      const [spellAssignments, abilityIds] = await Promise.all([
+        listCharacterSpellAssignments(characterId),
         listCharacterAbilityIds(characterId),
       ])
-      setAssignedSpellIds(new Set(spellIds))
+      setAssignedSpellIds(new Set(spellAssignments.map((assignment) => assignment.spell_id)))
+      setAlwaysPreparedSpellIds(new Set(
+        spellAssignments
+          .filter((assignment) => assignment.always_prepared)
+          .map((assignment) => assignment.spell_id),
+      ))
       setAssignedAbilityIds(new Set(abilityIds))
     } catch (error) {
       onError(friendlyError(error))
@@ -442,6 +450,27 @@ export function DmDashboard({
     }, isEdit ? `${input.name} updated.` : `${input.name} created.`)
   }
 
+  const setAlwaysPrepared = async (spell: Spell, alwaysPrepared: boolean) => {
+    if (!selectedCharacter) return
+    setBusy(true)
+    try {
+      await updateSpellAlwaysPrepared(selectedCharacter.id, spell.id, alwaysPrepared)
+      setAlwaysPreparedSpellIds((current) => {
+        const next = new Set(current)
+        if (alwaysPrepared) next.add(spell.id)
+        else next.delete(spell.id)
+        return next
+      })
+      onSuccess(alwaysPrepared
+        ? `${spell.name} is now always prepared for ${selectedCharacter.name}.`
+        : `${spell.name} now counts toward ${selectedCharacter.name}'s normal spell limit.`)
+    } catch (error) {
+      onError(friendlyError(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (loading) return <LoadingState label="Opening the DM workshop…" />
 
   return (
@@ -566,11 +595,12 @@ export function DmDashboard({
               <div className="card-grid">
                 {filteredSpells.slice(0, visibleSpells).map((spell) => {
                   const assigned = assignedSpellIds.has(spell.id)
+                  const alwaysPrepared = alwaysPreparedSpellIds.has(spell.id)
                   return (
                     <SpellCard
                       key={spell.id}
                       spell={spell}
-                      badge={assigned ? `Assigned to ${selectedCharacter?.name}` : undefined}
+                      badge={assigned ? `${alwaysPrepared ? 'Always prepared' : 'Assigned'} for ${selectedCharacter?.name}` : undefined}
                       secondaryAction={
                         <div className="card-action-group">
                           <Button variant="ghost" onClick={() => setEditor({ kind: 'spell', spell, duplicate: true })}><BookCopy size={16} /> Duplicate</Button>
@@ -582,7 +612,19 @@ export function DmDashboard({
                       }
                       action={
                         assigned ? (
-                          <Button variant="secondary" disabled={!selectedCharacter || busy} onClick={() => selectedCharacter && void act(() => removeSpellAssignment(selectedCharacter.id, spell.id), `${spell.name} removed from ${selectedCharacter.name}.`, false)}><X size={17} /> Remove</Button>
+                          <div className="card-action-group">
+                            <label className="compact-switch" title={alwaysPrepared ? 'Turn off to make this count toward the normal spell limit.' : 'Turn on to keep this prepared without counting toward the normal spell limit.'}>
+                              <input
+                                type="checkbox"
+                                aria-label={`Always prepared: ${spell.name}`}
+                                checked={alwaysPrepared}
+                                disabled={!selectedCharacter || busy}
+                                onChange={(event) => void setAlwaysPrepared(spell, event.target.checked)}
+                              />
+                              <span>Always prepared</span>
+                            </label>
+                            <Button variant="secondary" disabled={!selectedCharacter || busy} onClick={() => selectedCharacter && void act(() => removeSpellAssignment(selectedCharacter.id, spell.id), `${spell.name} removed from ${selectedCharacter.name}.`, false)}><X size={17} /> Remove</Button>
+                          </div>
                         ) : (
                           <Button disabled={!selectedCharacter} onClick={() => setEditor({ kind: 'assign-spell', spell })}><Plus size={17} /> Assign</Button>
                         )
