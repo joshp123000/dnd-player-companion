@@ -1,6 +1,7 @@
-import { BookMarked, BookOpen, LockKeyhole, RotateCcw, Save, SearchX, WandSparkles, Zap } from 'lucide-react'
+import { BookMarked, BookOpen, Gem, LockKeyhole, RotateCcw, Save, SearchX, WandSparkles, Zap } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AbilityCard } from '../components/AbilityCard'
+import { MagicItemCard } from '../components/MagicItemCard'
 import { SpellCard } from '../components/SpellCard'
 import { SpellFilters } from '../components/SpellFilters'
 import { Button, EmptyState, LoadingState, ProgressMeter, SegmentedControl } from '../components/ui'
@@ -11,7 +12,7 @@ import { classLabel, effectiveLimits, selectionLabel } from '../lib/rules'
 import { setsMatch, spellSelectionChanges, toggleSetValue } from '../lib/spellSelection'
 import type { PlayerBundle, Profile, Spell, SpellFilters as FilterValues } from '../types'
 
-type PlayerTab = 'cards' | 'spells' | 'abilities' | 'choices'
+type PlayerTab = 'cards' | 'spells' | 'items' | 'abilities' | 'choices'
 
 const initialFilters: FilterValues = { search: '', level: 'all', classKey: 'all', school: 'all' }
 
@@ -73,6 +74,8 @@ export function PlayerDashboard({
   }
 
   const { character, spellAssignments, abilities } = bundle
+  const magicItemAssignments = abilities.filter((assignment) => assignment.ability?.ability_kind === 'magic_item')
+  const abilityAssignments = abilities.filter((assignment) => assignment.ability?.ability_kind !== 'magic_item')
   const limits = effectiveLimits(character, bundle.progression)
   const activeAssignments = spellAssignments.filter(
     (assignment) => assignment.always_prepared || assignment.is_prepared,
@@ -161,6 +164,7 @@ export function PlayerDashboard({
         options={[
           { value: 'cards', label: 'All cards' },
           { value: 'spells', label: 'Spells' },
+          { value: 'items', label: 'Magic items' },
           { value: 'abilities', label: 'Abilities' },
           ...(usesPreparedSelection ? [{ value: 'choices' as PlayerTab, label: 'Prepare' }] : []),
         ]}
@@ -174,7 +178,7 @@ export function PlayerDashboard({
         <div className="dashboard-section">
           <div className="section-heading"><div><span className="eyebrow">At the table</span><h2>Your active cards</h2></div></div>
           {activeAssignments.length === 0 && abilities.length === 0 ? (
-            <EmptyState icon={<BookOpen />} title="No cards yet" message="Your DM can assign your spells and abilities here." />
+            <EmptyState icon={<BookOpen />} title="No cards yet" message="Your DM can assign your spells, magic items, and abilities here." />
           ) : (
             <div className="card-grid">
               {activeAssignments.map((assignment) => assignment.spell && (
@@ -184,8 +188,11 @@ export function PlayerDashboard({
                   badge={assignment.always_prepared ? 'Always prepared' : assignment.spell.level === 0 ? 'Cantrip' : 'Ready'}
                 />
               ))}
-              {abilities.map((assignment) => assignment.ability && (
+              {abilityAssignments.map((assignment) => assignment.ability && (
                 <AbilityCard key={assignment.id} ability={assignment.ability} note={assignment.notes} />
+              ))}
+              {magicItemAssignments.map((assignment) => assignment.ability && (
+                <MagicItemCard key={assignment.id} item={assignment.ability} note={assignment.notes} />
               ))}
             </div>
           )}
@@ -211,14 +218,32 @@ export function PlayerDashboard({
         </div>
       )}
 
+      {tab === 'items' && (
+        <div className="dashboard-section">
+          <div className="section-heading">
+            <div><span className="eyebrow">Carried treasures</span><h2>Magic items</h2></div>
+            <span className="result-count">{magicItemAssignments.length} assigned</span>
+          </div>
+          {magicItemAssignments.length === 0 ? (
+            <EmptyState icon={<Gem />} title="No magic items assigned" message="Your DM can add magic-item cards to your character." />
+          ) : (
+            <div className="card-grid">
+              {magicItemAssignments.map((assignment) => assignment.ability && (
+                <MagicItemCard key={assignment.id} item={assignment.ability} note={assignment.notes} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {tab === 'abilities' && (
         <div className="dashboard-section">
           <div className="section-heading"><div><span className="eyebrow">Feature cards</span><h2>Abilities & traits</h2></div></div>
-          {abilities.length === 0 ? (
-            <EmptyState icon={<Zap />} title="No abilities assigned" message="Your DM can add class features, feats, items, or homebrew abilities here." />
+          {abilityAssignments.length === 0 ? (
+            <EmptyState icon={<Zap />} title="No abilities assigned" message="Your DM can add class features, feats, or homebrew abilities here." />
           ) : (
             <div className="card-grid">
-              {abilities.map((assignment) => assignment.ability && (
+              {abilityAssignments.map((assignment) => assignment.ability && (
                 <AbilityCard key={assignment.id} ability={assignment.ability} note={assignment.notes} />
               ))}
             </div>

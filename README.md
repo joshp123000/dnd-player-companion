@@ -10,16 +10,18 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - One-time player activation codes—passwords never live in the GitHub repository
 - Self-service password changes plus DM-controlled account recovery and username changes
 - Per-account Classic Compendium, Spelljammer, and Tomb of Annihilation visual themes
-- Multiple campaign groups with separate player rosters and one shared spell/ability library
+- Multiple campaign groups with separate player rosters and shared spell, magic-item, and ability libraries
 - 339 SRD 5.2 spells imported from the supplied JSON source
+- All 258 magic-item entries from SRD 5.2.1, with type, rarity, attunement, rules text, and roll tables
 - 174 built-in base-class feature cards covering every 2024 core class and the 2025 Artificer
 - All 75 feats from the 2024 Player’s Handbook, with categories, prerequisites, repeatability, and concise rules summaries
-- Separate spell and ability entities with structured virtual-card editors
-- Search and filters by name, level, class, and school
+- Separate spell, magic-item, and ability card tabs for both DMs and players
+- Spell search by name, level, class, and school, plus magic-item search by name, type, rarity, and tag
 - Duplicate any SRD spell into an independent editable homebrew version
 - Automatic class/level spell and cantrip limits for the 2024 core casters plus the 2025 Artificer
 - Per-character DM overrides for every automatic limit
 - Automatic class-feature assignments by class and level, with per-card DM hide/restore overrides
+- Magic items can be assigned to any number of characters; players see only their own assigned items
 - DM-assigned cantrips and permanent known spells, plus daily preparation and Wizard spellbook workflows
 - Staged spell selection so players can make several choices and save once
 - One-click DM control for opening or locking daily spell preparation
@@ -66,6 +68,12 @@ To rebuild the 2024 feat cards and their migration data:
 npm run import:feats
 ```
 
+To refresh the SRD 5.2.1 magic-item cards and their migration data:
+
+```bash
+npm run import:magic-items
+```
+
 ## Architecture
 
 - `src/pages/PlayerDashboard.tsx` — player cards and spell choices
@@ -75,11 +83,13 @@ npm run import:feats
 - `src/data/class-features.json` — generated base-class feature card library
 - `src/data/artificer-features.json` — summarized 2025 Artificer feature cards
 - `src/data/feats.json` — generated 2024 Player’s Handbook feat-card library
+- `src/data/magic-items.json` — generated SRD 5.2.1 magic-item card library
 - `supabase/migrations/` — tables, policies, authentication hooks, account recovery, and guarded spell-selection functions
 - `supabase/seed.sql` — generated SRD spell seed
 - `scripts/import-spells.mjs` — repeatable SRD JSON importer
 - `scripts/import-class-features.mjs` — repeatable SRD class-feature importer and migration-data builder
 - `scripts/import-feats.mjs` — repeatable feat-card and migration-data builder
+- `scripts/import-magic-items.mjs` — pinned SRD magic-item importer and migration-data builder
 - `.github/workflows/deploy-pages.yml` — tested GitHub Pages deployment
 
 The Supabase anonymous key is designed to be public. Access control comes from the included row-level-security policies. Never put a Supabase service-role key into this frontend or into a `VITE_` variable.
@@ -88,4 +98,4 @@ The Supabase anonymous key is designed to be public. Access control comes from t
 
 The automatic limits and base-class feature cards follow the 2024 core classes and the printed 2025 Artificer. Artificers receive Mending automatically as an always-prepared card, outside their normal cantrip limit. Class features appear automatically when a character reaches their required level; the DM can hide a feature or add another card when subclasses, multiclassing, house rules, or campaign rewards require it. Feats are intentionally manual: the DM assigns the chosen feat after checking the prerequisite displayed on its card.
 
-The built-in spell library is SRD content. See [SRD-ATTRIBUTION.md](SRD-ATTRIBUTION.md). Project source code is licensed under [MIT](LICENSE).
+The built-in spell and magic-item libraries are SRD content. The magic-item tab contains the complete SRD 5.2.1 catalog; items published only in the Dungeon Master’s Guide and not released in the SRD are not copied into the repository. See [SRD-ATTRIBUTION.md](SRD-ATTRIBUTION.md). Project source code is licensed under [MIT](LICENSE).

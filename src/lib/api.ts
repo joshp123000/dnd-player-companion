@@ -414,7 +414,7 @@ export const listAbilities = async (): Promise<Ability[]> => {
     .order('feature_order')
     .order('name')
   if (error) throw error
-  const kindOrder = { class_feature: 0, feat: 1, custom: 2 }
+  const kindOrder = { class_feature: 0, feat: 1, magic_item: 2, custom: 3 }
   return ((data ?? []) as Ability[]).sort((left, right) =>
     (kindOrder[left.ability_kind] ?? 3) - (kindOrder[right.ability_kind] ?? 3)
     || (left.class_key ?? '').localeCompare(right.class_key ?? '')

@@ -3,6 +3,7 @@ import {
   BookOpenText,
   Check,
   Edit3,
+  Gem,
   KeyRound,
   LockKeyhole,
   Plus,
@@ -20,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AbilityCard } from '../components/AbilityCard'
 import { AbilityEditor } from '../components/AbilityEditor'
 import { CharacterEditor } from '../components/CharacterEditor'
+import { MagicItemCard } from '../components/MagicItemCard'
 import { SpellCard } from '../components/SpellCard'
 import { SpellEditor } from '../components/SpellEditor'
 import { SpellFilters } from '../components/SpellFilters'
@@ -56,10 +58,11 @@ import {
 import { canDeleteCampaign, charactersForCampaign, cleanCampaignName } from '../lib/campaigns'
 import { friendlyError, initials } from '../lib/format'
 import { filterSpells } from '../lib/filter'
+import { filterMagicItems, MAGIC_ITEM_RARITIES, magicItemCategories } from '../lib/magicItems'
 import { CHARACTER_CLASSES, classLabel } from '../lib/rules'
-import type { Ability, Campaign, Character, Spell, SpellFilters as FilterValues } from '../types'
+import type { Ability, Campaign, Character, MagicItemFilters, Spell, SpellFilters as FilterValues } from '../types'
 
-type DmTab = 'players' | 'spells' | 'abilities'
+type DmTab = 'players' | 'spells' | 'items' | 'abilities'
 type EditorState =
   | { kind: 'campaign'; campaign?: Campaign }
   | { kind: 'create-character' }
@@ -71,6 +74,7 @@ type EditorState =
   | null
 
 const initialFilters: FilterValues = { search: '', level: 'all', classKey: 'all', school: 'all' }
+const initialMagicItemFilters: MagicItemFilters = { search: '', category: 'all', rarity: 'all' }
 
 function CreateCharacterForm({
   campaigns,
@@ -249,7 +253,9 @@ export function DmDashboard({
   const [filters, setFilters] = useState<FilterValues>(initialFilters)
   const [abilitySearch, setAbilitySearch] = useState('')
   const [abilityClassFilter, setAbilityClassFilter] = useState('selected')
+  const [magicItemFilters, setMagicItemFilters] = useState<MagicItemFilters>(initialMagicItemFilters)
   const [visibleSpells, setVisibleSpells] = useState(40)
+  const [visibleMagicItems, setVisibleMagicItems] = useState(40)
   const [editor, setEditor] = useState<EditorState>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -333,9 +339,22 @@ export function DmDashboard({
   useEffect(() => { void loadAssignments(selectedCharacterId) }, [loadAssignments, selectedCharacterId])
 
   const filteredSpells = useMemo(() => filterSpells(spells, filters), [spells, filters])
+  const magicItems = useMemo(
+    () => abilities.filter((ability) => ability.ability_kind === 'magic_item'),
+    [abilities],
+  )
+  const nonMagicAbilities = useMemo(
+    () => abilities.filter((ability) => ability.ability_kind !== 'magic_item'),
+    [abilities],
+  )
+  const filteredMagicItems = useMemo(
+    () => filterMagicItems(magicItems, magicItemFilters),
+    [magicItems, magicItemFilters],
+  )
+  const magicItemCategoryOptions = useMemo(() => magicItemCategories(magicItems), [magicItems])
   const filteredAbilities = useMemo(() => {
     const search = abilitySearch.trim().toLowerCase()
-    return abilities.filter((ability) =>
+    return nonMagicAbilities.filter((ability) =>
       (abilityClassFilter === 'all'
         || (abilityClassFilter === 'selected'
           ? !ability.is_system || ability.ability_kind === 'feat' || ability.class_key === selectedCharacter?.class_key
@@ -346,7 +365,9 @@ export function DmDashboard({
           : ability.class_key === abilityClassFilter))
       && (!search || `${ability.name} ${ability.category} ${ability.prerequisite ?? ''} ${ability.tags.join(' ')}`.toLowerCase().includes(search)),
     )
-  }, [abilities, abilityClassFilter, abilitySearch, selectedCharacter?.class_key])
+  }, [nonMagicAbilities, abilityClassFilter, abilitySearch, selectedCharacter?.class_key])
+  const assignedAbilityCount = nonMagicAbilities.filter((ability) => assignedAbilityIds.has(ability.id)).length
+  const assignedMagicItemCount = magicItems.filter((item) => assignedAbilityIds.has(item.id)).length
 
   const act = async (operation: () => Promise<void>, success: string, close = true) => {
     setBusy(true)
@@ -489,7 +510,7 @@ export function DmDashboard({
             {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}
           </Select>
         </label>
-        <p className="campaign-bar__copy">{campaignCharacters.length} {campaignCharacters.length === 1 ? 'player' : 'players'} · one shared spell and ability library</p>
+        <p className="campaign-bar__copy">{campaignCharacters.length} {campaignCharacters.length === 1 ? 'player' : 'players'} · shared spell, item, and ability libraries</p>
         <div className="campaign-bar__actions">
           <Button variant="secondary" onClick={() => setEditor({ kind: 'campaign' })}><Plus size={17} /> New campaign</Button>
           <Button variant="ghost" disabled={!selectedCampaign} onClick={() => selectedCampaign && setEditor({ kind: 'campaign', campaign: selectedCampaign })}><Edit3 size={16} /> Rename</Button>
@@ -506,10 +527,11 @@ export function DmDashboard({
       <SegmentedControl
         label="DM sections"
         value={tab}
-        onChange={(value) => { setTab(value); setVisibleSpells(40) }}
+        onChange={(value) => { setTab(value); setVisibleSpells(40); setVisibleMagicItems(40) }}
         options={[
           { value: 'players', label: 'Players' },
           { value: 'spells', label: 'Spell library' },
+          { value: 'items', label: 'Magic items' },
           { value: 'abilities', label: 'Abilities' },
         ]}
       />
@@ -557,7 +579,7 @@ export function DmDashboard({
         </section>
       )}
 
-      {(tab === 'spells' || tab === 'abilities') && (
+      {(tab === 'spells' || tab === 'items' || tab === 'abilities') && (
         <div className="library-toolbar">
           <label><span>Assign cards to</span><Select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}><option value="">Choose a character</option>{campaignCharacters.map((character) => <option key={character.id} value={character.id}>{character.name} — L{character.level} {classLabel(character.class_key)}</option>)}</Select></label>
           {!selectedCharacter && <span className="toolbar-hint"><Shield size={16} /> Select a character in {selectedCampaign?.name ?? 'this campaign'} to assign cards.</span>}
@@ -623,9 +645,61 @@ export function DmDashboard({
         </section>
       )}
 
+      {tab === 'items' && (
+        <section className="dashboard-section">
+          <div className="section-heading">
+            <div><span className="eyebrow">SRD 5.2.1 · 2024 rules</span><h2>Magic item library</h2></div>
+            <span className="result-count">{magicItems.length} items</span>
+          </div>
+          <div className="form-grid form-grid--3 magic-item-library-filters">
+            <Field label="Search magic items">
+              <span className="search-input"><Search size={18} /><Input aria-label="Search magic items" placeholder="Search by name, type, rarity, or tag…" value={magicItemFilters.search} onChange={(event) => { setMagicItemFilters((current) => ({ ...current, search: event.target.value })); setVisibleMagicItems(40) }} /></span>
+            </Field>
+            <Field label="Item type">
+              <Select value={magicItemFilters.category} onChange={(event) => { setMagicItemFilters((current) => ({ ...current, category: event.target.value })); setVisibleMagicItems(40) }}>
+                <option value="all">All item types</option>
+                {magicItemCategoryOptions.map((category) => <option value={category} key={category}>{category}</option>)}
+              </Select>
+            </Field>
+            <Field label="Rarity">
+              <Select value={magicItemFilters.rarity} onChange={(event) => { setMagicItemFilters((current) => ({ ...current, rarity: event.target.value })); setVisibleMagicItems(40) }}>
+                <option value="all">All rarities</option>
+                {MAGIC_ITEM_RARITIES.map((rarity) => <option value={rarity} key={rarity}>{rarity}</option>)}
+              </Select>
+            </Field>
+          </div>
+          <div className="callout"><strong>Assigning magic items</strong><p>Add any item to one or more characters. Players see only the items assigned to their character, in a separate Magic Items tab.</p></div>
+          <div className="library-summary"><span>{filteredMagicItems.length} matching items</span><span>{assignedMagicItemCount} assigned to {selectedCharacter?.name ?? 'no player'}</span></div>
+          {filteredMagicItems.length === 0 ? (
+            <EmptyState icon={<Gem />} title="No matching magic items" message="Change the search, item type, or rarity filters." />
+          ) : (
+            <>
+              <div className="card-grid">
+                {filteredMagicItems.slice(0, visibleMagicItems).map((item) => {
+                  const assigned = assignedAbilityIds.has(item.id)
+                  return (
+                    <MagicItemCard
+                      item={item}
+                      key={item.id}
+                      badge={assigned ? `Assigned to ${selectedCharacter?.name}` : undefined}
+                      action={<Button variant={assigned ? 'secondary' : 'primary'} disabled={!selectedCharacter || busy} onClick={() => selectedCharacter && void act(
+                        () => setAbilityAssignment(selectedCharacter.id, item.id, !assigned),
+                        assigned ? `${item.name} removed from ${selectedCharacter.name}.` : `${item.name} assigned to ${selectedCharacter.name}.`,
+                        false,
+                      )}>{assigned ? <X size={17} /> : <Check size={17} />} {assigned ? 'Remove' : 'Assign'}</Button>}
+                    />
+                  )
+                })}
+              </div>
+              {visibleMagicItems < filteredMagicItems.length && <div className="load-more"><Button variant="secondary" onClick={() => setVisibleMagicItems((count) => count + 40)}>Show more items</Button></div>}
+            </>
+          )}
+        </section>
+      )}
+
       {tab === 'abilities' && (
         <section className="dashboard-section">
-          <div className="section-heading"><div><span className="eyebrow">Features, feats & items</span><h2>Ability library</h2></div><Button onClick={() => setEditor({ kind: 'ability' })}><Plus size={18} /> New ability</Button></div>
+          <div className="section-heading"><div><span className="eyebrow">Features, feats & homebrew</span><h2>Ability library</h2></div><Button onClick={() => setEditor({ kind: 'ability' })}><Plus size={18} /> New ability</Button></div>
           <div className="form-grid form-grid--2 ability-library-filters">
             <Field label="Search abilities">
               <span className="search-input"><Search size={18} /><Input aria-label="Search abilities" placeholder="Search by name, class, or tag…" value={abilitySearch} onChange={(event) => setAbilitySearch(event.target.value)} /></span>
@@ -641,9 +715,9 @@ export function DmDashboard({
             </Field>
           </div>
           <div className="callout"><strong>Class features and feats</strong><p>Class features follow class and level automatically. Feats are added manually after a character chooses or earns one; use the prerequisite shown on each card to check eligibility.</p></div>
-          <div className="library-summary"><span>{filteredAbilities.length} matching abilities</span><span>{assignedAbilityIds.size} assigned to {selectedCharacter?.name ?? 'no player'}</span></div>
+          <div className="library-summary"><span>{filteredAbilities.length} matching abilities</span><span>{assignedAbilityCount} assigned to {selectedCharacter?.name ?? 'no player'}</span></div>
           {filteredAbilities.length === 0 ? (
-            <EmptyState icon={<Zap />} title="No abilities yet" message="Create a reusable virtual card for a class feature, feat, item, or homebrew power." action={<Button onClick={() => setEditor({ kind: 'ability' })}><Sparkles size={18} /> Create ability</Button>} />
+            <EmptyState icon={<Zap />} title="No abilities yet" message="Create a reusable virtual card for a class feature, feat, or homebrew power." action={<Button onClick={() => setEditor({ kind: 'ability' })}><Sparkles size={18} /> Create ability</Button>} />
           ) : (
             <div className="card-grid">
               {filteredAbilities.map((ability) => {
@@ -673,7 +747,7 @@ export function DmDashboard({
         </section>
       )}
 
-      {editor?.kind === 'campaign' && <Modal title={editor.campaign ? `Rename ${editor.campaign.name}` : 'Create a campaign'} description="Campaigns separate player rosters. Spells and abilities stay shared." onClose={() => setEditor(null)}><CampaignForm campaign={editor.campaign} busy={busy} onCancel={() => setEditor(null)} onSubmit={(name) => void saveCampaign(name)} /></Modal>}
+      {editor?.kind === 'campaign' && <Modal title={editor.campaign ? `Rename ${editor.campaign.name}` : 'Create a campaign'} description="Campaigns separate player rosters. Spells, magic items, and abilities stay shared." onClose={() => setEditor(null)}><CampaignForm campaign={editor.campaign} busy={busy} onCancel={() => setEditor(null)} onSubmit={(name) => void saveCampaign(name)} /></Modal>}
       {editor?.kind === 'create-character' && <Modal title="Add a player" description="They will use the username and activation code for first-time setup." onClose={() => setEditor(null)} wide><CreateCharacterForm campaigns={campaigns} initialCampaignId={selectedCampaignId} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void act(() => createCharacter(input).then(() => undefined), `${input.characterName} created.`)} /></Modal>}
       {editor?.kind === 'edit-character' && <Modal title={`Edit ${editor.character.name}`} description="Automatic limits update when class or level changes unless you set an override." onClose={() => setEditor(null)} wide><CharacterEditor character={editor.character} campaigns={campaigns} busy={busy} onCancel={() => setEditor(null)} onSubmit={(changes) => void act(() => updateCharacter(editor.character.id, changes), `${changes.name} updated.`)} /></Modal>}
       {editor?.kind === 'player-access' && (
@@ -696,7 +770,7 @@ export function DmDashboard({
         </Modal>
       )}
       {editor?.kind === 'spell' && <Modal title={editor.duplicate ? `Duplicate ${editor.spell?.name}` : editor.spell ? `Edit ${editor.spell.name}` : 'Create a custom spell'} description={editor.duplicate ? 'This creates a separate homebrew copy; the SRD original remains unchanged.' : 'Fill in the fields and the app will generate the player card.'} onClose={() => setEditor(null)} wide><SpellEditor key={`${editor.spell?.id ?? 'new'}-${editor.duplicate ? 'copy' : 'edit'}`} spell={editor.spell} duplicate={editor.duplicate} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveSpell(input)} /></Modal>}
-      {editor?.kind === 'ability' && <Modal title={editor.ability ? `Edit ${editor.ability.name}` : 'Create an ability card'} description="Use this for class features, feats, magic items, or any custom ability." onClose={() => setEditor(null)} wide><AbilityEditor key={editor.ability?.id ?? 'new'} ability={editor.ability} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveAbility(input)} /></Modal>}
+      {editor?.kind === 'ability' && <Modal title={editor.ability ? `Edit ${editor.ability.name}` : 'Create an ability card'} description="Use this for a homebrew feature, feat, trait, or other custom ability." onClose={() => setEditor(null)} wide><AbilityEditor key={editor.ability?.id ?? 'new'} ability={editor.ability} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveAbility(input)} /></Modal>}
       {editor?.kind === 'assign-spell' && selectedCharacter && <Modal title="Assign spell" onClose={() => setEditor(null)}><AssignmentForm spell={editor.spell} character={selectedCharacter} busy={busy} onCancel={() => setEditor(null)} onSubmit={(prepared, alwaysPrepared) => void act(() => assignSpell(selectedCharacter.id, editor.spell.id, { prepared, alwaysPrepared }), `${editor.spell.name} assigned to ${selectedCharacter.name}.`)} /></Modal>}
     </div>
   )

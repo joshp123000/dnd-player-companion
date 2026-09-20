@@ -14,13 +14,14 @@ You only need to do the Supabase setup once. After that, changes pushed to `main
    4. `supabase/migrations/202609200003_artificer.sql`
    5. `supabase/migrations/202609200004_class_features.sql`
    6. `supabase/migrations/202609200005_phb_feats.sql`
-   7. `supabase/seed.sql`
+   7. `supabase/migrations/202609200006_magic_items.sql`
+   8. `supabase/seed.sql`
 
-The final script imports all 339 SRD spells. The spell seed updates SRD records without replacing custom spells or changing assignment IDs.
+The magic-item migration imports all 258 SRD 5.2.1 items. The final script imports all 339 SRD spells. Both update built-in records without replacing custom cards or changing assignment IDs.
 
 ### Existing installations
 
-For an existing installation that already has automatic base-class features, run only `supabase/migrations/202609200005_phb_feats.sql` to add the 75 built-in feat cards. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
+For an existing installation that already has the feat cards, run only `supabase/migrations/202609200006_magic_items.sql` to add the magic-item library and tab data. If it does not yet have feats, run `202609200005_phb_feats.sql` first. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
 
 ## 2. Create the first DM account
 
@@ -78,7 +79,7 @@ The activation code is stored as a one-way hash and is erased after successful u
 
 - Each player can choose **Account → Compendium style**. Their Classic, Spelljammer, or Tomb of Annihilation selection is saved to their login and follows them between devices.
 - Use the campaign selector above the DM tabs to switch rosters.
-- Choose **New campaign** to add another group. Spells and abilities remain shared between every campaign.
+- Choose **New campaign** to add another group. Spells, magic items, and abilities remain shared between every campaign.
 - Move a character between groups from that character's **Edit** form. Empty campaigns can be deleted; campaigns containing players cannot.
 - If one person plays in both campaigns, create a separate player username and character for each campaign.
 - Use **Open prep for everyone** after a Long Rest so prepared casters can change their leveled spells. Click it again to lock preparation.
@@ -88,6 +89,8 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Base-class feature cards are automatically added or removed when the character's class or level changes.
 - In **Abilities**, use **Hide** to suppress an automatic feature for one character and **Restore** to bring it back. Adding an off-class or higher-level feature creates a DM override.
 - Choose **Feats only** to browse all 75 Player’s Handbook feats. Each card shows its prerequisite and whether it is repeatable; use **Add** or **Remove** for the selected character.
+- Open **Magic items** to search the 258-item SRD catalog by name, type, or rarity. Choose a character and use **Assign** or **Remove**; the same item can be assigned to any number of characters.
+- Players see their assigned items in their own **Magic items** tab and alongside their other cards under **All cards**.
 - Use overrides for feats, multiclassing, house rules, or unusual rewards.
 - Turn on **Preparation unlocked** after a long rest for Artificers, Clerics, Druids, Paladins, and Wizards.
 - For Bards, Rangers, Sorcerers, and Warlocks, assign their chosen spells with **Selected/prepared now** turned on so the cards appear immediately.
@@ -117,3 +120,13 @@ npm run import:spells
 ```
 
 Review the generated changes to `public/data/spells.json` and `supabase/seed.sql`, run the seed against Supabase, then commit the updated files.
+
+## Updating the magic-item source
+
+The SRD 5.2.1 Markdown conversion is pinned in `scripts/import-magic-items.mjs`. To refresh the generated card library and SQL migration:
+
+```bash
+npm run import:magic-items
+```
+
+Review `src/data/magic-items.json` and `supabase/migrations/202609200006_magic_items.sql`, then run the migration against Supabase. The importer validates the expected 258 entries before writing either file.

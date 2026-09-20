@@ -1,7 +1,7 @@
 export type Role = 'dm' | 'player'
 export type SpellSource = 'srd' | 'custom'
 export type AbilitySource = 'srd' | 'book' | 'custom'
-export type AbilityKind = 'class_feature' | 'feat' | 'custom'
+export type AbilityKind = 'class_feature' | 'feat' | 'magic_item' | 'custom'
 export type AbilityAssignmentType = 'automatic' | 'dm_included' | 'dm_excluded'
 export type SelectionMode = 'daily' | 'level_choice' | 'spellbook' | 'none'
 
@@ -107,9 +107,18 @@ export interface Ability {
   repeatable: boolean
   source: string | null
   tags: string[]
+  item_type?: string | null
+  item_rarity?: string | null
+  attunement?: string | null
   created_by: string | null
   created_at: string
   updated_at: string
+}
+
+export interface MagicItemFilters {
+  search: string
+  category: string | 'all'
+  rarity: string | 'all'
 }
 
 export interface CharacterAbility {
