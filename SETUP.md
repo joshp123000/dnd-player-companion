@@ -76,6 +76,8 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Choose **New campaign** to add another group. Spells and abilities remain shared between every campaign.
 - Move a character between groups from that character's **Edit** form. Empty campaigns can be deleted; campaigns containing players cannot.
 - If one person plays in both campaigns, create a separate player username and character for each campaign.
+- Use **Open choices for everyone** to unlock both prepared spells and cantrip choices for every player in one click. The same button locks them again.
+- Players can select or remove several spells on the preparation page, then use **Save changes** once when they are finished.
 - Update the character's class or level; the default limits recalculate automatically.
 - Use overrides only for feats, multiclassing, house rules, or unusual rewards.
 - Turn on **Preparation unlocked** after a long rest for Clerics, Druids, Paladins, and Wizards.

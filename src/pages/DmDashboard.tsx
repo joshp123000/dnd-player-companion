@@ -4,11 +4,13 @@ import {
   Check,
   Edit3,
   KeyRound,
+  LockKeyhole,
   Plus,
   Search,
   Shield,
   Sparkles,
   Trash2,
+  UnlockKeyhole,
   UserPlus,
   Users,
   X,
@@ -42,6 +44,7 @@ import {
   removeAbilityAssignment,
   removeSpellAssignment,
   rotateActivationCode,
+  setAllSpellChangesUnlocked,
   updateAbility,
   updateCampaign,
   updateCharacter,
@@ -229,6 +232,9 @@ export function DmDashboard({
     [characters, selectedCampaignId],
   )
   const selectedCharacter = campaignCharacters.find((character) => character.id === selectedCharacterId) ?? null
+  const allSpellChangesUnlocked = characters.length > 0 && characters.every(
+    (character) => character.preparation_unlocked && character.choices_unlocked,
+  )
 
   const load = useCallback(async (preferredCampaignId?: string) => {
     setLoading(true)
@@ -355,6 +361,24 @@ export function DmDashboard({
     await act(() => deleteCharacter(character.id), `${character.name} deleted.`, false)
   }
 
+  const toggleAllSpellChanges = async () => {
+    const unlocked = !allSpellChangesUnlocked
+    setBusy(true)
+    try {
+      await setAllSpellChangesUnlocked(characters.map((character) => character.id), unlocked)
+      setCharacters((current) => current.map((character) => ({
+        ...character,
+        preparation_unlocked: unlocked,
+        choices_unlocked: unlocked,
+      })))
+      onSuccess(unlocked ? 'Spell and cantrip choices opened for every player.' : 'Spell and cantrip choices locked for every player.')
+    } catch (error) {
+      onError(friendlyError(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const saveSpell = async (input: SpellInput) => {
     if (editor?.kind !== 'spell') return
     const isEdit = Boolean(editor.spell && !editor.duplicate && editor.spell.source_type === 'custom')
@@ -426,7 +450,13 @@ export function DmDashboard({
         <section className="dashboard-section">
           <div className="section-heading">
             <div><span className="eyebrow">Access & progression</span><h2>{selectedCampaign?.name ?? 'Players and characters'}</h2></div>
-            <Button disabled={!selectedCampaign} onClick={() => setEditor({ kind: 'create-character' })}><UserPlus size={18} /> Add player</Button>
+            <div className="section-heading__actions">
+              <Button variant="secondary" disabled={characters.length === 0 || busy} onClick={() => void toggleAllSpellChanges()}>
+                {allSpellChangesUnlocked ? <LockKeyhole size={17} /> : <UnlockKeyhole size={17} />}
+                {allSpellChangesUnlocked ? 'Lock choices for everyone' : 'Open choices for everyone'}
+              </Button>
+              <Button disabled={!selectedCampaign || busy} onClick={() => setEditor({ kind: 'create-character' })}><UserPlus size={18} /> Add player</Button>
+            </div>
           </div>
           {!selectedCampaign ? (
             <EmptyState icon={<Users />} title="Create your first campaign" message="Campaigns keep player rosters separate while sharing the same card library." action={<Button onClick={() => setEditor({ kind: 'campaign' })}><Plus size={18} /> Create campaign</Button>} />

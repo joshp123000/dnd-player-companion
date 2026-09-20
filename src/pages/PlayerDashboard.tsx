@@ -1,4 +1,4 @@
-import { BookMarked, BookOpen, LockKeyhole, SearchX, WandSparkles, Zap } from 'lucide-react'
+import { BookMarked, BookOpen, LockKeyhole, RotateCcw, Save, SearchX, WandSparkles, Zap } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AbilityCard } from '../components/AbilityCard'
 import { SpellCard } from '../components/SpellCard'
@@ -8,6 +8,7 @@ import { listEligibleSpells, loadPlayerBundle, playerToggleSpell } from '../lib/
 import { friendlyError } from '../lib/format'
 import { filterSpells } from '../lib/filter'
 import { classLabel, effectiveLimits, selectionLabel } from '../lib/rules'
+import { setsMatch, spellSelectionChanges, toggleSetValue } from '../lib/spellSelection'
 import type { PlayerBundle, Profile, Spell, SpellFilters as FilterValues } from '../types'
 
 type PlayerTab = 'cards' | 'spells' | 'abilities' | 'choices'
@@ -28,20 +29,26 @@ export function PlayerDashboard({
   const [tab, setTab] = useState<PlayerTab>('cards')
   const [filters, setFilters] = useState<FilterValues>(initialFilters)
   const [loading, setLoading] = useState(true)
-  const [busySpell, setBusySpell] = useState<string | null>(null)
+  const [savingSelection, setSavingSelection] = useState(false)
+  const [draftSelectedSpellIds, setDraftSelectedSpellIds] = useState<Set<string>>(new Set())
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (showLoader = true) => {
+    if (showLoader) setLoading(true)
     try {
       const nextBundle = await loadPlayerBundle(profile.id)
       const limits = effectiveLimits(nextBundle.character, nextBundle.progression)
       const spells = await listEligibleSpells(nextBundle.character, limits.maxSpellLevel)
       setBundle(nextBundle)
       setEligibleSpells(spells)
+      setDraftSelectedSpellIds(new Set(
+        nextBundle.spellAssignments
+          .filter((assignment) => assignment.always_prepared || assignment.is_prepared)
+          .map((assignment) => assignment.spell_id),
+      ))
     } catch (error) {
       onError(friendlyError(error))
     } finally {
-      setLoading(false)
+      if (showLoader) setLoading(false)
     }
   }, [profile.id, onError])
 
@@ -49,6 +56,14 @@ export function PlayerDashboard({
 
   const assignmentMap = useMemo(
     () => new Map(bundle?.spellAssignments.map((assignment) => [assignment.spell_id, assignment]) ?? []),
+    [bundle],
+  )
+  const savedSelectedSpellIds = useMemo(
+    () => new Set(
+      bundle?.spellAssignments
+        .filter((assignment) => assignment.always_prepared || assignment.is_prepared)
+        .map((assignment) => assignment.spell_id) ?? [],
+    ),
     [bundle],
   )
 
@@ -62,8 +77,6 @@ export function PlayerDashboard({
   const activeAssignments = spellAssignments.filter(
     (assignment) => assignment.always_prepared || assignment.is_prepared,
   )
-  const activeCantrips = activeAssignments.filter((assignment) => assignment.spell?.level === 0)
-  const activeLeveled = activeAssignments.filter((assignment) => (assignment.spell?.level ?? 0) > 0 && !assignment.always_prepared)
   const filteredActive = filterSpells(
     activeAssignments.map((assignment) => assignment.spell).filter((spell): spell is Spell => Boolean(spell)),
     filters,
@@ -75,6 +88,26 @@ export function PlayerDashboard({
     choices = eligibleSpells.filter((spell) => spell.level === 0 || spellbookIds.has(spell.id))
   }
   const filteredChoices = filterSpells(choices, filters)
+  const alwaysPreparedIds = new Set(
+    spellAssignments.filter((assignment) => assignment.always_prepared).map((assignment) => assignment.spell_id),
+  )
+  const spellById = new Map<string, Spell>()
+  eligibleSpells.forEach((spell) => spellById.set(spell.id, spell))
+  spellAssignments.forEach((assignment) => {
+    if (assignment.spell) spellById.set(assignment.spell.id, assignment.spell)
+  })
+  const draftSpells = [...draftSelectedSpellIds]
+    .map((spellId) => spellById.get(spellId))
+    .filter((spell): spell is Spell => Boolean(spell))
+  const draftCantripCount = draftSpells.filter(
+    (spell) => spell.level === 0 && !alwaysPreparedIds.has(spell.id),
+  ).length
+  const draftLeveledCount = draftSpells.filter(
+    (spell) => spell.level > 0 && !alwaysPreparedIds.has(spell.id),
+  ).length
+  const selectionChanges = spellSelectionChanges(savedSelectedSpellIds, draftSelectedSpellIds)
+  const selectionChangeCount = selectionChanges.added.length + selectionChanges.removed.length
+  const hasUnsavedSelection = !setsMatch(savedSelectedSpellIds, draftSelectedSpellIds)
 
   const canEditSpell = (spell: Spell) => {
     if (spell.level === 0) return character.choices_unlocked
@@ -84,16 +117,23 @@ export function PlayerDashboard({
     return limits.selectionMode === 'level_choice' && character.choices_unlocked
   }
 
-  const toggleSpell = async (spell: Spell, active: boolean) => {
-    setBusySpell(spell.id)
+  const saveSpellSelection = async () => {
+    if (!hasUnsavedSelection) return
+    setSavingSelection(true)
     try {
-      await playerToggleSpell(character.id, spell.id, active)
-      await load()
-      onSuccess(active ? `${spell.name} added.` : `${spell.name} removed.`)
+      for (const spellId of selectionChanges.removed) {
+        await playerToggleSpell(character.id, spellId, false)
+      }
+      for (const spellId of selectionChanges.added) {
+        await playerToggleSpell(character.id, spellId, true)
+      }
+      await load(false)
+      onSuccess(`${selectionChangeCount} spell ${selectionChangeCount === 1 ? 'change' : 'changes'} saved.`)
     } catch (error) {
-      onError(friendlyError(error))
+      await load(false)
+      onError(`The full selection could not be saved. ${friendlyError(error)}`)
     } finally {
-      setBusySpell(null)
+      setSavingSelection(false)
     }
   }
 
@@ -106,9 +146,9 @@ export function PlayerDashboard({
           <p>Level {character.level} {character.subclass ? `${character.subclass} ` : ''}{classLabel(character.class_key)}</p>
         </div>
         <div className="character-hero__meters">
-          {limits.cantrips > 0 && <ProgressMeter value={activeCantrips.length} max={limits.cantrips} label="Cantrips" />}
+          {limits.cantrips > 0 && <ProgressMeter value={draftCantripCount} max={limits.cantrips} label="Cantrips" />}
           {limits.preparedSpells > 0 && (
-            <ProgressMeter value={activeLeveled.length} max={limits.preparedSpells} label={selectionLabel(limits.selectionMode)} />
+            <ProgressMeter value={draftLeveledCount} max={limits.preparedSpells} label={selectionLabel(limits.selectionMode)} />
           )}
         </div>
       </section>
@@ -200,11 +240,30 @@ export function PlayerDashboard({
           {!character.preparation_unlocked && !character.choices_unlocked && (
             <div className="locked-notice"><LockKeyhole size={20} /><div><strong>Choices are locked</strong><span>Your DM can unlock this section after a long rest or when you level up.</span></div></div>
           )}
+          {character.preparation_unlocked && !character.choices_unlocked && limits.cantrips > 0 && (
+            <div className="locked-notice"><LockKeyhole size={20} /><div><strong>Cantrip choices are locked</strong><span>Your DM has opened prepared spells, but must also open spell choices to change cantrips.</span></div></div>
+          )}
+          {!character.preparation_unlocked && character.choices_unlocked && (limits.selectionMode === 'daily' || limits.selectionMode === 'spellbook') && (
+            <div className="locked-notice"><LockKeyhole size={20} /><div><strong>Prepared spell changes are locked</strong><span>You can change cantrips, but your DM must open preparation to change leveled spells.</span></div></div>
+          )}
+          <div className={`selection-save-bar ${hasUnsavedSelection ? 'selection-save-bar--dirty' : ''}`}>
+            <div>
+              <strong>{hasUnsavedSelection ? `${selectionChangeCount} unsaved ${selectionChangeCount === 1 ? 'change' : 'changes'}` : 'Spell choices saved'}</strong>
+              <span>Select everything you want, then save once.</span>
+            </div>
+            <div className="selection-save-bar__actions">
+              <Button type="button" variant="ghost" disabled={!hasUnsavedSelection || savingSelection} onClick={() => setDraftSelectedSpellIds(new Set(savedSelectedSpellIds))}><RotateCcw size={16} /> Undo</Button>
+              <Button type="button" disabled={!hasUnsavedSelection || savingSelection} onClick={() => void saveSpellSelection()}><Save size={16} /> {savingSelection ? 'Saving…' : 'Save changes'}</Button>
+            </div>
+          </div>
           <div className="card-grid">
             {filteredChoices.map((spell) => {
               const assignment = assignmentMap.get(spell.id)
-              const active = Boolean(assignment?.always_prepared || assignment?.is_prepared)
+              const active = Boolean(assignment?.always_prepared || draftSelectedSpellIds.has(spell.id))
               const editable = canEditSpell(spell) && !assignment?.always_prepared
+              const limitReached = spell.level === 0
+                ? draftCantripCount >= limits.cantrips
+                : draftLeveledCount >= limits.preparedSpells
               return (
                 <SpellCard
                   key={spell.id}
@@ -213,11 +272,12 @@ export function PlayerDashboard({
                   action={
                     <Button
                       variant={active ? 'secondary' : 'primary'}
-                      disabled={!editable || busySpell === spell.id}
-                      onClick={() => void toggleSpell(spell, !active)}
+                      disabled={!editable || savingSelection || (!active && limitReached)}
+                      title={!active && limitReached ? 'Remove another spell of this type before selecting this one.' : undefined}
+                      onClick={() => setDraftSelectedSpellIds((current) => toggleSetValue(current, spell.id))}
                     >
                       {active ? <BookMarked size={17} /> : <WandSparkles size={17} />}
-                      {busySpell === spell.id ? 'Saving…' : active ? 'Remove' : 'Select'}
+                      {active ? 'Remove' : 'Select'}
                     </Button>
                   }
                 />

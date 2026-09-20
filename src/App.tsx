@@ -26,9 +26,12 @@ function App() {
     window.setTimeout(() => setToasts((current) => current.filter((toast) => toast.id !== id)), 4500)
   }, [])
 
-  const hydrate = useCallback(async (nextSession?: Session | null) => {
+  const notifyError = useCallback((message: string) => notify(message, 'error'), [notify])
+  const notifySuccess = useCallback((message: string) => notify(message, 'success'), [notify])
+
+  const hydrate = useCallback(async (nextSession?: Session | null, showLoader = true) => {
     if (!supabase) return
-    setLoading(true)
+    if (showLoader) setLoading(true)
     try {
       const resolvedSession = nextSession ?? (await supabase.auth.getSession()).data.session
       setSession(resolvedSession)
@@ -38,15 +41,25 @@ function App() {
       notify(friendlyError(error), 'error')
       setProfile(null)
     } finally {
-      setLoading(false)
+      if (showLoader) setLoading(false)
     }
   }, [notify])
 
   useEffect(() => {
     if (!supabase) return
     void hydrate()
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      window.setTimeout(() => void hydrate(nextSession), 0)
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'INITIAL_SESSION') return
+      if (event === 'TOKEN_REFRESHED') {
+        setSession(nextSession)
+        return
+      }
+      if (event === 'SIGNED_OUT') {
+        setSession(null)
+        setProfile(null)
+        return
+      }
+      window.setTimeout(() => void hydrate(nextSession, false), 0)
     })
     return () => data.subscription.unsubscribe()
   }, [hydrate])
@@ -71,14 +84,14 @@ function App() {
         <Suspense fallback={<LoadingState label="Opening your dashboard…" />}>
           {profile.role === 'dm' ? (
             <DmDashboard
-              onError={(message) => notify(message, 'error')}
-              onSuccess={(message) => notify(message, 'success')}
+              onError={notifyError}
+              onSuccess={notifySuccess}
             />
           ) : (
             <PlayerDashboard
               profile={profile}
-              onError={(message) => notify(message, 'error')}
-              onSuccess={(message) => notify(message, 'success')}
+              onError={notifyError}
+              onSuccess={notifySuccess}
             />
           )}
         </Suspense>
