@@ -57,6 +57,12 @@ import {
   type SpellInput,
 } from '../lib/api'
 import { canDeleteCampaign, charactersForCampaign, cleanCampaignName } from '../lib/campaigns'
+import {
+  matchesDmAbilityView,
+  matchesDmMagicItemView,
+  type DmAbilityView,
+  type DmMagicItemView,
+} from '../lib/abilityAssignments'
 import { friendlyError, initials } from '../lib/format'
 import { filterSpells } from '../lib/filter'
 import { filterMagicItems, MAGIC_ITEM_RARITIES, magicItemCategories } from '../lib/magicItems'
@@ -255,7 +261,9 @@ export function DmDashboard({
   const [spellView, setSpellView] = useState<DmSpellView>('all')
   const [abilitySearch, setAbilitySearch] = useState('')
   const [abilityClassFilter, setAbilityClassFilter] = useState('selected')
+  const [abilityView, setAbilityView] = useState<DmAbilityView>('all')
   const [magicItemFilters, setMagicItemFilters] = useState<MagicItemFilters>(initialMagicItemFilters)
+  const [magicItemView, setMagicItemView] = useState<DmMagicItemView>('all')
   const [visibleSpells, setVisibleSpells] = useState(40)
   const [visibleMagicItems, setVisibleMagicItems] = useState(40)
   const [editor, setEditor] = useState<EditorState>(null)
@@ -338,6 +346,11 @@ export function DmDashboard({
   useEffect(() => {
     if (spellView === 'spellbook' && selectedCharacter?.class_key !== 'wizard') setSpellView('assigned')
   }, [selectedCharacter?.class_key, spellView])
+  useEffect(() => {
+    if (selectedCharacter) return
+    setAbilityView('all')
+    setMagicItemView('all')
+  }, [selectedCharacter])
 
   const filteredSpells = useMemo(() => {
     const isWizard = selectedCharacter?.class_key === 'wizard'
@@ -354,14 +367,17 @@ export function DmDashboard({
     [abilities],
   )
   const filteredMagicItems = useMemo(
-    () => filterMagicItems(magicItems, magicItemFilters),
-    [magicItems, magicItemFilters],
+    () => filterMagicItems(magicItems, magicItemFilters).filter((item) => (
+      matchesDmMagicItemView(abilityAssignments.get(item.id), magicItemView)
+    )),
+    [magicItems, magicItemFilters, abilityAssignments, magicItemView],
   )
   const magicItemCategoryOptions = useMemo(() => magicItemCategories(magicItems), [magicItems])
   const filteredAbilities = useMemo(() => {
     const search = abilitySearch.trim().toLowerCase()
     return nonMagicAbilities.filter((ability) =>
-      (abilityClassFilter === 'all'
+      matchesDmAbilityView(abilityAssignments.get(ability.id), abilityView)
+      && (abilityClassFilter === 'all'
         || (abilityClassFilter === 'selected'
           ? !ability.is_system || ability.ability_kind === 'feat' || ability.class_key === selectedCharacter?.class_key
           : abilityClassFilter === 'feats'
@@ -371,7 +387,7 @@ export function DmDashboard({
           : ability.class_key === abilityClassFilter))
       && (!search || `${ability.name} ${ability.category} ${ability.prerequisite ?? ''} ${ability.tags.join(' ')}`.toLowerCase().includes(search)),
     )
-  }, [nonMagicAbilities, abilityClassFilter, abilitySearch, selectedCharacter?.class_key])
+  }, [nonMagicAbilities, abilityAssignments, abilityClassFilter, abilitySearch, abilityView, selectedCharacter?.class_key])
   const assignedAbilityCount = nonMagicAbilities.filter((ability) => assignedAbilityIds.has(ability.id)).length
   const assignedMagicItemCount = magicItems.filter((item) => assignedAbilityIds.has(item.id)).length
   const assignedSpellCount = [...spellAssignments.values()].filter((assignment) => assignment.in_collection).length
@@ -703,10 +719,32 @@ export function DmDashboard({
               </Select>
             </Field>
           </div>
+          <div className="player-card-filter">
+            <label>
+              <span>Show for {selectedCharacter?.name ?? 'selected player'}</span>
+              <Select
+                aria-label="Filter by player magic-item status"
+                value={magicItemView}
+                disabled={!selectedCharacter}
+                onChange={(event) => { setMagicItemView(event.target.value as DmMagicItemView); setVisibleMagicItems(40) }}
+              >
+                <option value="all">Every magic item in the library</option>
+                <option value="assigned">Assigned to this character</option>
+                <option value="unassigned">Not assigned to this character</option>
+              </Select>
+            </label>
+            {selectedCharacter && <span>{assignedMagicItemCount} assigned to {selectedCharacter.name}</span>}
+          </div>
           <div className="callout"><strong>Assigning magic items</strong><p>Add any item to one or more characters. Players see only the items assigned to their character, in a separate Magic Items tab.</p></div>
           <div className="library-summary"><span>{filteredMagicItems.length} matching items</span><span>{assignedMagicItemCount} assigned to {selectedCharacter?.name ?? 'no player'}</span></div>
           {filteredMagicItems.length === 0 ? (
-            <EmptyState icon={<Gem />} title="No matching magic items" message="Change the search, item type, or rarity filters." />
+            <EmptyState
+              icon={<Gem />}
+              title={magicItemView === 'assigned' ? 'No assigned magic items' : 'No matching magic items'}
+              message={magicItemView === 'assigned' && selectedCharacter
+                ? `${selectedCharacter.name} does not currently have a magic item matching these filters.`
+                : 'Change the player status, search, item type, or rarity filters.'}
+            />
           ) : (
             <>
               <div className="card-grid">
@@ -750,10 +788,40 @@ export function DmDashboard({
               </Select>
             </Field>
           </div>
+          <div className="player-card-filter">
+            <label>
+              <span>Show for {selectedCharacter?.name ?? 'selected player'}</span>
+              <Select
+                aria-label="Filter by player ability status"
+                value={abilityView}
+                disabled={!selectedCharacter}
+                onChange={(event) => {
+                  const nextView = event.target.value as DmAbilityView
+                  setAbilityView(nextView)
+                  if (nextView !== 'all') setAbilityClassFilter('all')
+                }}
+              >
+                <option value="all">Every ability matching the library filters</option>
+                <option value="shown">Currently shown to this character</option>
+                <option value="automatic">Automatic class features</option>
+                <option value="dm_added">Added by the DM</option>
+                <option value="hidden">Hidden by the DM</option>
+                <option value="not_shown">Not currently shown to this character</option>
+              </Select>
+            </label>
+            {selectedCharacter && <span>{assignedAbilityCount} currently shown to {selectedCharacter.name}</span>}
+          </div>
           <div className="callout"><strong>Class features and feats</strong><p>Class features follow class and level automatically. Feats are added manually after a character chooses or earns one; use the prerequisite shown on each card to check eligibility.</p></div>
           <div className="library-summary"><span>{filteredAbilities.length} matching abilities</span><span>{assignedAbilityCount} assigned to {selectedCharacter?.name ?? 'no player'}</span></div>
           {filteredAbilities.length === 0 ? (
-            <EmptyState icon={<Zap />} title="No abilities yet" message="Create a reusable virtual card for a class feature, feat, or homebrew power." action={<Button onClick={() => setEditor({ kind: 'ability' })}><Sparkles size={18} /> Create ability</Button>} />
+            <EmptyState
+              icon={<Zap />}
+              title={abilityView === 'shown' ? 'No abilities currently shown' : 'No matching abilities'}
+              message={abilityView === 'shown' && selectedCharacter
+                ? `${selectedCharacter.name} does not currently have an ability matching these filters.`
+                : 'Change the player status, library, or search filters.'}
+              action={abilityView === 'all' ? <Button onClick={() => setEditor({ kind: 'ability' })}><Sparkles size={18} /> Create ability</Button> : undefined}
+            />
           ) : (
             <div className="card-grid">
               {filteredAbilities.map((ability) => {

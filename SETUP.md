@@ -87,6 +87,7 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Prepared casters can select or remove several leveled spells on the preparation page, then use **Save changes** once when they are finished. Cantrips never appear on that page.
 - Assign cantrips and permanent known spells yourself from the **Spell library** after the player chooses them from the book.
 - In the DM **Spell library**, use the player-status filter to review everything on a character, only their currently prepared selections, always-prepared spells, inactive assignments, or a Wizard’s spellbook.
+- In **Magic items** and **Abilities**, use the matching player-status filters to see only cards currently assigned or shown to the selected character. Ability views can also separate automatic features, DM additions, and hidden cards.
 - Update the character's class or level; the default limits recalculate automatically.
 - Base-class feature cards are automatically added or removed when the character's class or level changes.
 - In **Abilities**, use **Hide** to suppress an automatic feature for one character and **Restore** to bring it back. Adding an off-class or higher-level feature creates a DM override.

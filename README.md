@@ -25,6 +25,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Magic items can be assigned to any number of characters; players see only their own assigned items
 - DM-assigned cantrips and permanent known spells, plus daily preparation and Wizard spellbook workflows
 - DM spell-library views for each character’s assigned, currently prepared, always-prepared, inactive, and spellbook cards
+- DM player-status views for assigned magic items and currently shown, automatic, DM-added, or hidden abilities
 - Staged spell selection so players can make several choices and save once
 - One-click DM control for opening or locking daily spell preparation
 - Always-prepared spells that do not count against a character's normal limit
