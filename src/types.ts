@@ -1,6 +1,7 @@
 export type Role = 'dm' | 'player'
 export type SpellSource = 'srd' | 'custom'
 export type AbilitySource = 'srd' | 'book' | 'custom'
+export type AbilityKind = 'class_feature' | 'feat' | 'custom'
 export type AbilityAssignmentType = 'automatic' | 'dm_included' | 'dm_excluded'
 export type SelectionMode = 'daily' | 'level_choice' | 'spellbook' | 'none'
 
@@ -95,12 +96,15 @@ export interface Ability {
   level_required: number | null
   feature_order: number
   is_system: boolean
+  ability_kind: AbilityKind
   source_type: AbilitySource
   action_type: string | null
   uses: string | null
   recharge: string | null
   summary: string | null
   description: string
+  prerequisite: string | null
+  repeatable: boolean
   source: string | null
   tags: string[]
   created_by: string | null

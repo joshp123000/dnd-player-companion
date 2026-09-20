@@ -19,7 +19,12 @@ export function AbilityCard({
 }) {
   const [open, setOpen] = useState(false)
   const details = [
-    ability.level_required ? `Level ${ability.level_required}` : null,
+    ability.ability_kind === 'feat'
+      ? ability.prerequisite && ability.prerequisite !== 'None'
+        ? `Prerequisite: ${ability.prerequisite}`
+        : 'No prerequisite'
+      : ability.level_required ? `Level ${ability.level_required}` : null,
+    ability.repeatable ? 'Repeatable' : null,
     ability.action_type,
     ability.uses,
     ability.recharge,

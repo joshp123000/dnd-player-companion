@@ -12,12 +12,15 @@ const ability: Ability = {
   level_required: 7,
   feature_order: 1,
   is_system: true,
+  ability_kind: 'class_feature',
   source_type: 'book',
   action_type: 'Reaction',
   uses: 'Intelligence modifier',
   recharge: 'Long Rest',
   summary: 'Improve a failed check or save.',
   description: 'Add your Intelligence modifier to the roll.',
+  prerequisite: null,
+  repeatable: false,
   source: 'Artificer level 7',
   tags: ['artificer'],
   created_by: null,
@@ -32,5 +35,21 @@ describe('AbilityCard', () => {
     expect(screen.getByText('Flash of Genius')).toBeInTheDocument()
     expect(screen.getByText('Automatic')).toBeInTheDocument()
     expect(screen.getByText(/Level 7 · Reaction · Intelligence modifier · Long Rest/)).toBeInTheDocument()
+  })
+
+  it('shows feat prerequisites and repeatability', () => {
+    render(<AbilityCard ability={{
+      ...ability,
+      slug: 'phb24-feat-elemental-adept',
+      name: 'Elemental Adept',
+      category: 'General Feat',
+      ability_kind: 'feat',
+      class_key: null,
+      level_required: 4,
+      prerequisite: 'Level 4+; Spellcasting or Pact Magic feature',
+      repeatable: true,
+    }} />)
+
+    expect(screen.getByText(/Prerequisite: Level 4\+; Spellcasting or Pact Magic feature · Repeatable/)).toBeInTheDocument()
   })
 })

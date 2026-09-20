@@ -426,7 +426,13 @@ export const listAbilities = async (): Promise<Ability[]> => {
     .order('feature_order')
     .order('name')
   if (error) throw error
-  return (data ?? []) as Ability[]
+  const kindOrder = { class_feature: 0, feat: 1, custom: 2 }
+  return ((data ?? []) as Ability[]).sort((left, right) =>
+    (kindOrder[left.ability_kind] ?? 3) - (kindOrder[right.ability_kind] ?? 3)
+    || (left.class_key ?? '').localeCompare(right.class_key ?? '')
+    || (left.level_required ?? 0) - (right.level_required ?? 0)
+    || left.name.localeCompare(right.name),
+  )
 }
 
 export const createAbility = async (input: AbilityInput): Promise<Ability> => {

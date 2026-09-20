@@ -342,11 +342,13 @@ export function DmDashboard({
     return abilities.filter((ability) =>
       (abilityClassFilter === 'all'
         || (abilityClassFilter === 'selected'
-          ? !ability.is_system || ability.class_key === selectedCharacter?.class_key
+          ? !ability.is_system || ability.ability_kind === 'feat' || ability.class_key === selectedCharacter?.class_key
+          : abilityClassFilter === 'feats'
+            ? ability.ability_kind === 'feat'
           : abilityClassFilter === 'custom'
             ? !ability.is_system
           : ability.class_key === abilityClassFilter))
-      && (!search || `${ability.name} ${ability.category} ${ability.tags.join(' ')}`.toLowerCase().includes(search)),
+      && (!search || `${ability.name} ${ability.category} ${ability.prerequisite ?? ''} ${ability.tags.join(' ')}`.toLowerCase().includes(search)),
     )
   }, [abilities, abilityClassFilter, abilitySearch, selectedCharacter?.class_key])
 
@@ -661,14 +663,15 @@ export function DmDashboard({
             </Field>
             <Field label="Show abilities for">
               <Select value={abilityClassFilter} onChange={(event) => setAbilityClassFilter(event.target.value)}>
-                <option value="selected">{selectedCharacter ? `${classLabel(selectedCharacter.class_key)} + custom` : 'Current character + custom'}</option>
+                <option value="selected">{selectedCharacter ? `${classLabel(selectedCharacter.class_key)} + feats + custom` : 'Current character + feats + custom'}</option>
+                <option value="feats">Feats only</option>
                 <option value="custom">Custom cards only</option>
-                <option value="all">Every class</option>
+                <option value="all">Every ability</option>
                 {CHARACTER_CLASSES.map((key) => <option key={key} value={key}>{classLabel(key)}</option>)}
               </Select>
             </Field>
           </div>
-          <div className="callout"><strong>Automatic class features</strong><p>Built-in cards follow the selected character’s class and level. Hide one for a house rule, restore it later, or add any other card as a DM override.</p></div>
+          <div className="callout"><strong>Class features and feats</strong><p>Class features follow class and level automatically. Feats are added manually after a character chooses or earns one; use the prerequisite shown on each card to check eligibility.</p></div>
           <div className="library-summary"><span>{filteredAbilities.length} matching abilities</span><span>{assignedAbilityIds.size} assigned to {selectedCharacter?.name ?? 'no player'}</span></div>
           {filteredAbilities.length === 0 ? (
             <EmptyState icon={<Zap />} title="No abilities yet" message="Create a reusable virtual card for a class feature, feat, item, or homebrew power." action={<Button onClick={() => setEditor({ kind: 'ability' })}><Sparkles size={18} /> Create ability</Button>} />
@@ -681,7 +684,7 @@ export function DmDashboard({
                 const automatic = assignment?.assignment_type === 'automatic'
                 const nextEnabled = !assigned
                 const actionLabel = excluded ? 'Restore' : assigned ? automatic ? 'Hide' : 'Remove' : 'Add'
-                const assignmentBadge = excluded ? 'Hidden by DM' : automatic ? 'Automatic' : assigned ? 'DM override' : undefined
+                const assignmentBadge = excluded ? 'Hidden by DM' : automatic ? 'Automatic' : assigned ? ability.ability_kind === 'feat' ? 'Assigned feat' : 'DM override' : undefined
                 return (
                   <AbilityCard
                     ability={ability}
