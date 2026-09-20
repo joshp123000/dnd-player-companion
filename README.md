@@ -17,7 +17,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Per-character DM overrides for every automatic limit
 - Daily preparation, level-up choice, and Wizard spellbook workflows
 - Staged spell selection so players can make several choices and save once
-- One-click DM control to open or lock spell and cantrip choices for every player
+- Separate one-click DM controls for preparation and level-up spell/cantrip choices
 - Always-prepared spells that do not count against a character's normal limit
 - Secure Supabase row-level security: players cannot read another player's character or assignments
 - Responsive, accessible layout for phones, tablets, and desktops

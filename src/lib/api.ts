@@ -173,14 +173,26 @@ export const playerToggleSpell = async (
   if (error) throw error
 }
 
-export const setAllSpellChangesUnlocked = async (
+export const setAllPreparationUnlocked = async (
   characterIds: string[],
   unlocked: boolean,
 ) => {
   if (characterIds.length === 0) return
   const { error } = await requireSupabase()
     .from('characters')
-    .update({ preparation_unlocked: unlocked, choices_unlocked: unlocked })
+    .update({ preparation_unlocked: unlocked })
+    .in('id', characterIds)
+  if (error) throw error
+}
+
+export const setAllChoicesUnlocked = async (
+  characterIds: string[],
+  unlocked: boolean,
+) => {
+  if (characterIds.length === 0) return
+  const { error } = await requireSupabase()
+    .from('characters')
+    .update({ choices_unlocked: unlocked })
     .in('id', characterIds)
   if (error) throw error
 }

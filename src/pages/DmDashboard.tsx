@@ -44,7 +44,8 @@ import {
   removeAbilityAssignment,
   removeSpellAssignment,
   rotateActivationCode,
-  setAllSpellChangesUnlocked,
+  setAllChoicesUnlocked,
+  setAllPreparationUnlocked,
   updateAbility,
   updateCampaign,
   updateCharacter,
@@ -232,8 +233,11 @@ export function DmDashboard({
     [characters, selectedCampaignId],
   )
   const selectedCharacter = campaignCharacters.find((character) => character.id === selectedCharacterId) ?? null
-  const allSpellChangesUnlocked = characters.length > 0 && characters.every(
-    (character) => character.preparation_unlocked && character.choices_unlocked,
+  const allPreparationUnlocked = characters.length > 0 && characters.every(
+    (character) => character.preparation_unlocked,
+  )
+  const allChoicesUnlocked = characters.length > 0 && characters.every(
+    (character) => character.choices_unlocked,
   )
 
   const load = useCallback(async (preferredCampaignId?: string) => {
@@ -361,17 +365,33 @@ export function DmDashboard({
     await act(() => deleteCharacter(character.id), `${character.name} deleted.`, false)
   }
 
-  const toggleAllSpellChanges = async () => {
-    const unlocked = !allSpellChangesUnlocked
+  const toggleAllPreparation = async () => {
+    const unlocked = !allPreparationUnlocked
     setBusy(true)
     try {
-      await setAllSpellChangesUnlocked(characters.map((character) => character.id), unlocked)
+      await setAllPreparationUnlocked(characters.map((character) => character.id), unlocked)
       setCharacters((current) => current.map((character) => ({
         ...character,
         preparation_unlocked: unlocked,
+      })))
+      onSuccess(unlocked ? 'Spell preparation opened for every player.' : 'Spell preparation locked for every player.')
+    } catch (error) {
+      onError(friendlyError(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const toggleAllChoices = async () => {
+    const unlocked = !allChoicesUnlocked
+    setBusy(true)
+    try {
+      await setAllChoicesUnlocked(characters.map((character) => character.id), unlocked)
+      setCharacters((current) => current.map((character) => ({
+        ...character,
         choices_unlocked: unlocked,
       })))
-      onSuccess(unlocked ? 'Spell and cantrip choices opened for every player.' : 'Spell and cantrip choices locked for every player.')
+      onSuccess(unlocked ? 'Level-up spell and cantrip choices opened for every player.' : 'Level-up spell and cantrip choices locked for every player.')
     } catch (error) {
       onError(friendlyError(error))
     } finally {
@@ -451,9 +471,18 @@ export function DmDashboard({
           <div className="section-heading">
             <div><span className="eyebrow">Access & progression</span><h2>{selectedCampaign?.name ?? 'Players and characters'}</h2></div>
             <div className="section-heading__actions">
-              <Button variant="secondary" disabled={characters.length === 0 || busy} onClick={() => void toggleAllSpellChanges()}>
-                {allSpellChangesUnlocked ? <LockKeyhole size={17} /> : <UnlockKeyhole size={17} />}
-                {allSpellChangesUnlocked ? 'Lock choices for everyone' : 'Open choices for everyone'}
+              <Button variant="secondary" disabled={characters.length === 0 || busy} onClick={() => void toggleAllPreparation()}>
+                {allPreparationUnlocked ? <LockKeyhole size={17} /> : <UnlockKeyhole size={17} />}
+                {allPreparationUnlocked ? 'Lock prep for everyone' : 'Open prep for everyone'}
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={characters.length === 0 || busy}
+                title="Level-up choices include cantrips"
+                onClick={() => void toggleAllChoices()}
+              >
+                {allChoicesUnlocked ? <LockKeyhole size={17} /> : <UnlockKeyhole size={17} />}
+                {allChoicesUnlocked ? 'Lock level-up choices' : 'Open level-up choices'}
               </Button>
               <Button disabled={!selectedCampaign || busy} onClick={() => setEditor({ kind: 'create-character' })}><UserPlus size={18} /> Add player</Button>
             </div>
