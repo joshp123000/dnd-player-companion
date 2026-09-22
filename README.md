@@ -12,7 +12,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Per-account Classic Compendium, Spelljammer, and Tomb of Annihilation visual themes
 - Multiple campaign groups with separate player rosters and shared spell, magic-item, and ability libraries
 - 339 SRD 5.2 spells imported from the supplied JSON source
-- All 258 magic-item entries from SRD 5.2.1, with type, rarity, attunement, rules text, and roll tables
+- All 258 magic-item entries from SRD 5.2.1, plus custom magic-item creation with type, rarity, attunement, and rules text
 - 174 built-in base-class feature cards covering every 2024 core class and the 2025 Artificer
 - All 75 feats from the 2024 Player’s Handbook, with categories, prerequisites, repeatability, and concise rules summaries
 - Separate spell, magic-item, and ability card tabs for both DMs and players
@@ -22,7 +22,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Automatic class/level spell and cantrip limits for the 2024 core casters plus the 2025 Artificer
 - Per-character DM overrides for every automatic limit
 - Automatic class-feature assignments by class and level, with per-card DM hide/restore overrides
-- Magic items can be assigned to any number of characters; players see only their own assigned items
+- Built-in and custom magic items can be assigned to any number of characters; players see only their own assigned items
 - DM-assigned cantrips and permanent known spells, plus daily preparation and Wizard spellbook workflows
 - DM spell-library views for each character’s assigned, currently prepared, always-prepared, inactive, and spellbook cards
 - DM player-status views for assigned magic items and currently shown, automatic, DM-added, or hidden abilities

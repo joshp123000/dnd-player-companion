@@ -22,6 +22,9 @@ export function MagicItemCard({
     item.item_type ?? item.category,
     item.item_rarity,
     item.attunement,
+    item.action_type,
+    item.uses,
+    item.recharge,
   ].filter(Boolean).join(' · ')
 
   return (
@@ -37,6 +40,7 @@ export function MagicItemCard({
           <span className="content-card__title-row">
             <strong>{item.name}</strong>
             {item.item_rarity && <span className="badge">{item.item_rarity}</span>}
+            {item.source_type === 'custom' && <span className="badge">Custom</span>}
             {badge && <span className="badge badge--accent">{badge}</span>}
             {item.dm_edited && <span className="badge">DM edited</span>}
           </span>

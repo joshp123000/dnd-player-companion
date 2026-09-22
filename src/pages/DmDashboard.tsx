@@ -77,7 +77,7 @@ type EditorState =
   | { kind: 'edit-character'; character: Character }
   | { kind: 'player-access'; character: Character }
   | { kind: 'spell'; spell?: Spell; duplicate?: boolean }
-  | { kind: 'ability'; ability?: Ability }
+  | { kind: 'ability'; ability?: Ability; newKind?: 'custom' | 'magic_item' }
   | { kind: 'assign-spell'; spell: Spell }
   | null
 
@@ -485,7 +485,7 @@ export function DmDashboard({
     const isEdit = Boolean(editor.ability)
     await act(async () => {
       if (editor.ability) await updateAbility(editor.ability, input)
-      else await createAbility(input)
+      else await createAbility(input, editor.newKind ?? 'custom')
     }, isEdit ? `${input.name} updated.` : `${input.name} created.`)
   }
 
@@ -699,8 +699,8 @@ export function DmDashboard({
       {tab === 'items' && (
         <section className="dashboard-section">
           <div className="section-heading">
-            <div><span className="eyebrow">SRD 5.2.1 · 2024 rules</span><h2>Magic item library</h2></div>
-            <span className="result-count">{magicItems.length} items</span>
+            <div><span className="eyebrow">2024 rules &amp; homebrew</span><h2>Magic item library</h2></div>
+            <div className="section-heading__actions"><span className="result-count">{magicItems.length} items</span><Button onClick={() => setEditor({ kind: 'ability', newKind: 'magic_item' })}><Plus size={18} /> New magic item</Button></div>
           </div>
           <div className="form-grid form-grid--3 magic-item-library-filters">
             <Field label="Search magic items">
@@ -735,7 +735,7 @@ export function DmDashboard({
             </label>
             {selectedCharacter && <span>{assignedMagicItemCount} assigned to {selectedCharacter.name}</span>}
           </div>
-          <div className="callout"><strong>Assigning magic items</strong><p>Add any item to one or more characters. Players see only the items assigned to their character, in a separate Magic Items tab.</p></div>
+          <div className="callout"><strong>Assigning magic items</strong><p>Create homebrew items or use the SRD library, then add any item to one or more characters. Players see only the items assigned to their character.</p></div>
           <div className="library-summary"><span>{filteredMagicItems.length} matching items</span><span>{assignedMagicItemCount} assigned to {selectedCharacter?.name ?? 'no player'}</span></div>
           {filteredMagicItems.length === 0 ? (
             <EmptyState
@@ -755,7 +755,7 @@ export function DmDashboard({
                       item={item}
                       key={item.id}
                       badge={assigned ? `Assigned to ${selectedCharacter?.name}` : undefined}
-                      secondaryAction={<Button variant="ghost" onClick={() => setEditor({ kind: 'ability', ability: item })}><Edit3 size={16} /> Edit</Button>}
+                      secondaryAction={<div className="card-action-group"><Button variant="ghost" onClick={() => setEditor({ kind: 'ability', ability: item })}><Edit3 size={16} /> Edit</Button>{!item.is_system && <Button variant="ghost" className="danger-text" aria-label={`Delete ${item.name}`} onClick={() => { if (window.confirm(`Delete the custom magic item ${item.name}? It will also be removed from every character.`)) void act(() => deleteAbility(item.id), `${item.name} deleted.`, false) }}><Trash2 size={16} /></Button>}</div>}
                       action={<Button variant={assigned ? 'secondary' : 'primary'} disabled={!selectedCharacter || busy} onClick={() => selectedCharacter && void act(
                         () => setAbilityAssignment(selectedCharacter.id, item.id, !assigned),
                         assigned ? `${item.name} removed from ${selectedCharacter.name}.` : `${item.name} assigned to ${selectedCharacter.name}.`,
@@ -874,7 +874,7 @@ export function DmDashboard({
         </Modal>
       )}
       {editor?.kind === 'spell' && <Modal title={editor.duplicate ? `Duplicate ${editor.spell?.name}` : editor.spell ? `Edit ${editor.spell.name}` : 'Create a custom spell'} description={editor.duplicate ? 'This creates a separate homebrew copy; the original remains unchanged.' : editor.spell ? 'This changes the shared card for every campaign and player who can see it. Existing assignments stay in place.' : 'Fill in the fields and the app will generate the player card.'} onClose={() => setEditor(null)} wide><SpellEditor key={`${editor.spell?.id ?? 'new'}-${editor.duplicate ? 'copy' : 'edit'}`} spell={editor.spell} duplicate={editor.duplicate} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveSpell(input)} /></Modal>}
-      {editor?.kind === 'ability' && <Modal title={editor.ability ? `Edit ${editor.ability.name}` : 'Create an ability card'} description={editor.ability ? 'This changes the shared card for every campaign and assigned player. Automatic class and level unlock rules stay protected.' : 'Use this for a homebrew feature, feat, trait, or other custom ability.'} onClose={() => setEditor(null)} wide><AbilityEditor key={editor.ability?.id ?? 'new'} ability={editor.ability} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveAbility(input)} /></Modal>}
+      {editor?.kind === 'ability' && <Modal title={editor.ability ? `Edit ${editor.ability.name}` : editor.newKind === 'magic_item' ? 'Create a custom magic item' : 'Create an ability card'} description={editor.ability ? 'This changes the shared card for every campaign and assigned player. Automatic class and level unlock rules stay protected.' : editor.newKind === 'magic_item' ? 'Fill in the item details once, then assign the finished card to any number of characters.' : 'Use this for a homebrew feature, feat, trait, or other custom ability.'} onClose={() => setEditor(null)} wide><AbilityEditor key={editor.ability?.id ?? editor.newKind ?? 'new'} ability={editor.ability} abilityKind={editor.newKind} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveAbility(input)} /></Modal>}
       {editor?.kind === 'assign-spell' && selectedCharacter && <Modal title="Assign spell" onClose={() => setEditor(null)}><AssignmentForm spell={editor.spell} character={selectedCharacter} busy={busy} onCancel={() => setEditor(null)} onSubmit={(prepared, alwaysPrepared) => void act(() => assignSpell(selectedCharacter.id, editor.spell.id, { prepared, alwaysPrepared }), `${editor.spell.name} assigned to ${selectedCharacter.name}.`)} /></Modal>}
     </div>
   )

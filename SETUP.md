@@ -92,7 +92,7 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Base-class feature cards are automatically added or removed when the character's class or level changes.
 - In **Abilities**, use **Hide** to suppress an automatic feature for one character and **Restore** to bring it back. Adding an off-class or higher-level feature creates a DM override.
 - Choose **Feats only** to browse all 75 Player’s Handbook feats. Each card shows its prerequisite and whether it is repeatable; use **Add** or **Remove** for the selected character.
-- Open **Magic items** to search the 258-item SRD catalog by name, type, or rarity. Choose a character and use **Assign** or **Remove**; the same item can be assigned to any number of characters.
+- Open **Magic items** to search the 258-item SRD catalog by name, type, or rarity. Use **New magic item** to make an editable homebrew card, then choose a character and use **Assign** or **Remove**; the same item can be assigned to any number of characters.
 - Players see their assigned items in their own **Magic items** tab and alongside their other cards under **All cards**.
 - Use **Edit** on any spell, class feature, feat, magic item, or custom card to correct its shared card text. Changes appear in every campaign, existing assignments stay in place, and generated cards receive a **DM edited** badge. Automatic class and level metadata remains protected.
 - Use overrides for feats, multiclassing, house rules, or unusual rewards.

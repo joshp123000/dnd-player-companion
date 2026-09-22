@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import type {
   Ability,
   AbilityAssignmentType,
+  AbilityKind,
   Campaign,
   Character,
   CharacterAbility,
@@ -435,10 +436,13 @@ export const listAbilities = async (): Promise<Ability[]> => {
   )
 }
 
-export const createAbility = async (input: AbilityInput): Promise<Ability> => {
+export const createAbility = async (
+  input: AbilityInput,
+  abilityKind: Extract<AbilityKind, 'custom' | 'magic_item'> = 'custom',
+): Promise<Ability> => {
   const { data, error } = await requireSupabase()
     .from('abilities')
-    .insert(input)
+    .insert({ ...input, ability_kind: abilityKind })
     .select('*')
     .single()
   if (error) throw error

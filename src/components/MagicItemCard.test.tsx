@@ -50,4 +50,10 @@ describe('MagicItemCard', () => {
     expect(screen.getByText('DM edited')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
   })
+
+  it('labels custom magic items', () => {
+    render(<MagicItemCard item={{ ...item, is_system: false, source_type: 'custom' }} />)
+
+    expect(screen.getByText('Custom')).toBeInTheDocument()
+  })
 })
