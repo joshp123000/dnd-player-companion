@@ -1,4 +1,5 @@
 import type { Ability, MagicItemFilters } from '../types'
+import { matchesAbilitySearch } from './cardSearch'
 
 export const MAGIC_ITEM_RARITIES = [
   'Common',
@@ -15,18 +16,10 @@ export const magicItemCategories = (items: Ability[]) => (
 )
 
 export const filterMagicItems = (items: Ability[], filters: MagicItemFilters) => {
-  const search = filters.search.trim().toLowerCase()
   return items.filter((item) => (
     item.ability_kind === 'magic_item'
     && (filters.category === 'all' || item.category === filters.category)
     && (filters.rarity === 'all' || item.item_rarity === filters.rarity)
-    && (
-      !search
-      || [item.name, item.item_type, item.item_rarity, item.attunement, item.summary, ...item.tags]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-        .includes(search)
-    )
+    && matchesAbilitySearch(item, filters.search)
   ))
 }

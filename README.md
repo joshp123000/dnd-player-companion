@@ -17,6 +17,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - All 75 feats from the 2024 Player’s Handbook, with categories, prerequisites, repeatability, and concise rules summaries
 - Separate spell, magic-item, and ability card tabs for both DMs and players
 - Spell search by name, level, class, and school, plus magic-item search by name, type, rarity, and tag
+- Player search across every card tab, including names, descriptions, categories, tags, rarity, attunement, and DM notes
 - Duplicate any SRD spell into an independent editable homebrew version
 - Edit generated spell, class-feature, feat, and magic-item cards globally without breaking assignments or automatic unlock rules
 - Automatic class/level spell and cantrip limits for the 2024 core casters plus the 2025 Artificer

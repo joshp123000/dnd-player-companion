@@ -94,6 +94,7 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Choose **Feats only** to browse all 75 Player’s Handbook feats. Each card shows its prerequisite and whether it is repeatable; use **Add** or **Remove** for the selected character.
 - Open **Magic items** to search the 258-item SRD catalog by name, type, or rarity. Use **New magic item** to make an editable homebrew card, then choose a character and use **Assign** or **Remove**; the same item can be assigned to any number of characters.
 - Players see their assigned items in their own **Magic items** tab and alongside their other cards under **All cards**.
+- Players can search within **All cards**, **Spells**, **Magic items**, **Abilities**, and **Prepare**. Search includes card text and metadata, not only card names.
 - Use **Edit** on any spell, class feature, feat, magic item, or custom card to correct its shared card text. Changes appear in every campaign, existing assignments stay in place, and generated cards receive a **DM edited** badge. Automatic class and level metadata remains protected.
 - Use overrides for feats, multiclassing, house rules, or unusual rewards.
 - Turn on **Preparation unlocked** after a long rest for Artificers, Clerics, Druids, Paladins, and Wizards.

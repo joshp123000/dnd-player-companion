@@ -1,11 +1,12 @@
-import { BookMarked, BookOpen, Gem, LockKeyhole, RotateCcw, Save, SearchX, WandSparkles, Zap } from 'lucide-react'
+import { BookMarked, BookOpen, Gem, LockKeyhole, RotateCcw, Save, Search, SearchX, WandSparkles, Zap } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AbilityCard } from '../components/AbilityCard'
 import { MagicItemCard } from '../components/MagicItemCard'
 import { SpellCard } from '../components/SpellCard'
 import { SpellFilters } from '../components/SpellFilters'
-import { Button, EmptyState, LoadingState, ProgressMeter, SegmentedControl } from '../components/ui'
+import { Button, EmptyState, Input, LoadingState, ProgressMeter, SegmentedControl } from '../components/ui'
 import { listEligibleSpells, loadPlayerBundle, playerToggleSpell } from '../lib/api'
+import { matchesAbilitySearch } from '../lib/cardSearch'
 import { friendlyError } from '../lib/format'
 import { filterSpells } from '../lib/filter'
 import { classLabel, effectiveLimits, selectionLabel } from '../lib/rules'
@@ -84,6 +85,15 @@ export function PlayerDashboard({
     activeAssignments.map((assignment) => assignment.spell).filter((spell): spell is Spell => Boolean(spell)),
     filters,
   )
+  const filteredMagicItemAssignments = magicItemAssignments.filter(
+    (assignment) => assignment.ability && matchesAbilitySearch(assignment.ability, filters.search, [assignment.notes]),
+  )
+  const filteredAbilityAssignments = abilityAssignments.filter(
+    (assignment) => assignment.ability && matchesAbilitySearch(assignment.ability, filters.search, [assignment.notes]),
+  )
+  const searchActive = Boolean(filters.search.trim())
+  const allCardCount = activeAssignments.length + abilityAssignments.length + magicItemAssignments.length
+  const filteredAllCardCount = filteredActive.length + filteredAbilityAssignments.length + filteredMagicItemAssignments.length
 
   const usesPreparedSelection = limits.selectionMode === 'daily' || limits.selectionMode === 'spellbook'
   let choices = eligibleSpells.filter((spell) => spell.level > 0)
@@ -174,24 +184,41 @@ export function PlayerDashboard({
         <SpellFilters value={filters} onChange={setFilters} hideClass />
       )}
 
+      {(tab === 'cards' || tab === 'items' || tab === 'abilities') && (
+        <label className="search-input standalone-search">
+          <Search size={18} />
+          <Input
+            aria-label={tab === 'cards' ? 'Search all cards' : tab === 'items' ? 'Search magic items' : 'Search abilities'}
+            placeholder={tab === 'cards' ? 'Search all your cards…' : tab === 'items' ? 'Search your magic items…' : 'Search your abilities…'}
+            value={filters.search}
+            onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
+          />
+        </label>
+      )}
+
       {tab === 'cards' && (
         <div className="dashboard-section">
-          <div className="section-heading"><div><span className="eyebrow">At the table</span><h2>Your active cards</h2></div></div>
-          {activeAssignments.length === 0 && abilities.length === 0 ? (
+          <div className="section-heading"><div><span className="eyebrow">At the table</span><h2>Your active cards</h2></div><span className="result-count">{searchActive ? `${filteredAllCardCount} of ${allCardCount}` : `${allCardCount} cards`}</span></div>
+          {allCardCount === 0 ? (
             <EmptyState icon={<BookOpen />} title="No cards yet" message="Your DM can assign your spells, magic items, and abilities here." />
+          ) : filteredAllCardCount === 0 ? (
+            <EmptyState icon={<SearchX />} title="No matching cards" message="Try another name, category, tag, or word from a card’s description." />
           ) : (
             <div className="card-grid">
-              {activeAssignments.map((assignment) => assignment.spell && (
-                <SpellCard
-                  key={assignment.id}
-                  spell={assignment.spell}
-                  badge={assignment.always_prepared ? 'Always prepared' : assignment.spell.level === 0 ? 'Cantrip' : 'Ready'}
-                />
-              ))}
-              {abilityAssignments.map((assignment) => assignment.ability && (
+              {filteredActive.map((spell) => {
+                const assignment = assignmentMap.get(spell.id)
+                return (
+                  <SpellCard
+                    key={spell.id}
+                    spell={spell}
+                    badge={assignment?.always_prepared ? 'Always prepared' : spell.level === 0 ? 'Cantrip' : 'Ready'}
+                  />
+                )
+              })}
+              {filteredAbilityAssignments.map((assignment) => assignment.ability && (
                 <AbilityCard key={assignment.id} ability={assignment.ability} note={assignment.notes} />
               ))}
-              {magicItemAssignments.map((assignment) => assignment.ability && (
+              {filteredMagicItemAssignments.map((assignment) => assignment.ability && (
                 <MagicItemCard key={assignment.id} item={assignment.ability} note={assignment.notes} />
               ))}
             </div>
@@ -222,13 +249,15 @@ export function PlayerDashboard({
         <div className="dashboard-section">
           <div className="section-heading">
             <div><span className="eyebrow">Carried treasures</span><h2>Magic items</h2></div>
-            <span className="result-count">{magicItemAssignments.length} assigned</span>
+            <span className="result-count">{searchActive ? `${filteredMagicItemAssignments.length} of ${magicItemAssignments.length}` : `${magicItemAssignments.length} assigned`}</span>
           </div>
           {magicItemAssignments.length === 0 ? (
             <EmptyState icon={<Gem />} title="No magic items assigned" message="Your DM can add magic-item cards to your character." />
+          ) : filteredMagicItemAssignments.length === 0 ? (
+            <EmptyState icon={<SearchX />} title="No matching magic items" message="Try another name, rarity, type, tag, or word from the item’s description." />
           ) : (
             <div className="card-grid">
-              {magicItemAssignments.map((assignment) => assignment.ability && (
+              {filteredMagicItemAssignments.map((assignment) => assignment.ability && (
                 <MagicItemCard key={assignment.id} item={assignment.ability} note={assignment.notes} />
               ))}
             </div>
@@ -238,12 +267,14 @@ export function PlayerDashboard({
 
       {tab === 'abilities' && (
         <div className="dashboard-section">
-          <div className="section-heading"><div><span className="eyebrow">Feature cards</span><h2>Abilities & traits</h2></div></div>
+          <div className="section-heading"><div><span className="eyebrow">Feature cards</span><h2>Abilities & traits</h2></div><span className="result-count">{searchActive ? `${filteredAbilityAssignments.length} of ${abilityAssignments.length}` : `${abilityAssignments.length} abilities`}</span></div>
           {abilityAssignments.length === 0 ? (
             <EmptyState icon={<Zap />} title="No abilities assigned" message="Your DM can add class features, feats, or homebrew abilities here." />
+          ) : filteredAbilityAssignments.length === 0 ? (
+            <EmptyState icon={<SearchX />} title="No matching abilities" message="Try another name, category, tag, or word from the ability’s description." />
           ) : (
             <div className="card-grid">
-              {abilityAssignments.map((assignment) => assignment.ability && (
+              {filteredAbilityAssignments.map((assignment) => assignment.ability && (
                 <AbilityCard key={assignment.id} ability={assignment.ability} note={assignment.notes} />
               ))}
             </div>
@@ -273,7 +304,9 @@ export function PlayerDashboard({
               <Button type="button" disabled={!hasUnsavedSelection || savingSelection} onClick={() => void saveSpellSelection()}><Save size={16} /> {savingSelection ? 'Saving…' : 'Save changes'}</Button>
             </div>
           </div>
-          <div className="card-grid">
+          {filteredChoices.length === 0 ? (
+            <EmptyState icon={<SearchX />} title="No matching spells" message="Try a different spell name, level, school, or search term." />
+          ) : <div className="card-grid">
             {filteredChoices.map((spell) => {
               const assignment = assignmentMap.get(spell.id)
               const active = Boolean(assignment?.always_prepared || draftSelectedSpellIds.has(spell.id))
@@ -300,7 +333,7 @@ export function PlayerDashboard({
                 />
               )
             })}
-          </div>
+          </div>}
         </div>
       )}
     </div>
