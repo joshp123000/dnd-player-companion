@@ -5,6 +5,7 @@ import { AppShell } from './components/AppShell'
 import { LoadingState } from './components/ui'
 import { changePassword, loadProfile, signOut, updateTheme } from './lib/api'
 import { friendlyError } from './lib/format'
+import { clearCharacterSession } from './lib/characterSession'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { normalizeThemeKey, type ThemeKey } from './lib/themes'
 import { LoginPage } from './pages/LoginPage'
@@ -66,6 +67,7 @@ function App() {
         return
       }
       if (event === 'SIGNED_OUT') {
+        clearCharacterSession()
         setSession(null)
         setProfile(null)
         setThemeKey('classic')
@@ -83,6 +85,7 @@ function App() {
   const handleSignOut = async () => {
     try {
       await signOut()
+      clearCharacterSession(profile.id)
       setSession(null)
       setProfile(null)
     } catch (error) {

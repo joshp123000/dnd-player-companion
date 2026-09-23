@@ -14,6 +14,7 @@ vi.mock('../lib/api', () => apiMocks)
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  window.sessionStorage.clear()
 })
 
 const profile: Profile = {
@@ -244,6 +245,24 @@ describe('PlayerDashboard card search', () => {
 
     expect(await screen.findByRole('heading', { name: 'Keth' })).toBeInTheDocument()
     expect(apiMocks.loadPlayerBundle).toHaveBeenLastCalledWith(profile.id, secondCharacter.id)
+    expect(window.sessionStorage.getItem(`campaign-compendium:last-character:${profile.id}`)).toBe(secondCharacter.id)
+  })
+
+  it('restores the last character selected during the login session', async () => {
+    window.sessionStorage.setItem(`campaign-compendium:last-character:${profile.id}`, secondCharacter.id)
+    apiMocks.loadPlayerBundle.mockResolvedValue({
+      ...bundle,
+      character: secondCharacter,
+      availableCharacters: [character, secondCharacter],
+      spellAssignments: [],
+      abilities: [],
+    })
+    apiMocks.listEligibleSpells.mockResolvedValue([])
+
+    render(<PlayerDashboard profile={profile} onError={vi.fn()} onSuccess={vi.fn()} />)
+
+    expect(await screen.findByRole('heading', { name: 'Keth' })).toBeInTheDocument()
+    expect(apiMocks.loadPlayerBundle).toHaveBeenCalledWith(profile.id, secondCharacter.id)
   })
 
   it('keeps Paladin and Cleric preparation pools separate', async () => {

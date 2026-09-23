@@ -7,6 +7,7 @@ import { SpellFilters } from '../components/SpellFilters'
 import { Button, EmptyState, Input, LoadingState, ProgressMeter, SegmentedControl, Select } from '../components/ui'
 import { listEligibleSpells, loadPlayerBundle, playerToggleSpell } from '../lib/api'
 import { matchesAbilitySearch } from '../lib/cardSearch'
+import { lastCharacterForSession, rememberCharacterForSession } from '../lib/characterSession'
 import { friendlyError } from '../lib/format'
 import { filterSpells } from '../lib/filter'
 import {
@@ -55,6 +56,7 @@ export function PlayerDashboard({
         })
         .map((entry) => entry.class_key)
       setBundle(nextBundle)
+      rememberCharacterForSession(profile.id, nextBundle.character.id)
       setEligibleSpells(spells)
       setDraftSelectedSpellKeys(new Set(
         nextBundle.spellAssignments
@@ -69,7 +71,7 @@ export function PlayerDashboard({
     }
   }, [profile.id, onError])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => { void load(true, lastCharacterForSession(profile.id)) }, [load, profile.id])
 
   const savedSelectedSpellKeys = useMemo(
     () => new Set(
