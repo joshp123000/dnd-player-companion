@@ -49,7 +49,7 @@ import {
   setAllPreparationUnlocked,
   updateAbility,
   updateCampaign,
-  updateCharacter,
+  updateCharacterMulticlass,
   updateSpell,
   updateSpellAlwaysPrepared,
   type AbilityAssignmentSummary,
@@ -67,7 +67,8 @@ import {
 import { friendlyError, initials } from '../lib/format'
 import { filterSpells } from '../lib/filter'
 import { filterMagicItems, MAGIC_ITEM_RARITIES, magicItemCategories } from '../lib/magicItems'
-import { CHARACTER_CLASSES, classLabel } from '../lib/rules'
+import { characterBuildLabel } from '../lib/multiclass'
+import { CHARACTER_CLASSES, SPELLCASTING_CLASSES, classLabel } from '../lib/rules'
 import { dmSpellStatusLabel, matchesDmSpellView, type DmSpellView } from '../lib/spellAssignments'
 import type { Ability, Campaign, Character, MagicItemFilters, Spell, SpellFilters as FilterValues } from '../types'
 
@@ -85,6 +86,20 @@ type EditorState =
 
 const initialFilters: FilterValues = { search: '', level: 'all', classKey: 'all', school: 'all' }
 const initialMagicItemFilters: MagicItemFilters = { search: '', category: 'all', rarity: 'all' }
+
+const classRowsFor = (character: Character) => character.class_levels?.length
+  ? character.class_levels
+  : [{
+    class_key: character.class_key,
+    class_level: character.level,
+    subclass: character.subclass,
+    is_primary: true,
+  }]
+
+const characterClassesLabel = (character: Character) => characterBuildLabel(classRowsFor(character))
+
+const hasCharacterClass = (character: Character | null, classKey: string) =>
+  Boolean(character && classRowsFor(character).some((entry) => entry.class_key === classKey))
 
 function CreateCharacterForm({
   campaigns,
@@ -281,19 +296,38 @@ function AssignmentForm({
   spell: Spell
   character: Character
   busy: boolean
-  onSubmit: (prepared: boolean, alwaysPrepared: boolean) => void
+  onSubmit: (sourceClassKey: string, prepared: boolean, alwaysPrepared: boolean) => void
   onCancel: () => void
 }) {
-  const [prepared, setPrepared] = useState(spell.level === 0 || character.class_key !== 'wizard')
+  const sourceOptions = classRowsFor(character).filter((entry) => (
+    SPELLCASTING_CLASSES.includes(entry.class_key)
+    && (spell.source_type === 'custom' || spell.classes.includes(entry.class_key))
+  ))
+  const initialSource = sourceOptions.find((entry) => entry.is_primary)?.class_key
+    ?? sourceOptions[0]?.class_key
+    ?? 'dm'
+  const [sourceClassKey, setSourceClassKey] = useState(initialSource)
+  const [prepared, setPrepared] = useState(spell.level === 0 || initialSource !== 'wizard')
   const [alwaysPrepared, setAlwaysPrepared] = useState(false)
   return (
-    <form className="editor-form" onSubmit={(event) => { event.preventDefault(); onSubmit(prepared || alwaysPrepared, alwaysPrepared) }}>
+    <form className="editor-form" onSubmit={(event) => { event.preventDefault(); onSubmit(sourceClassKey, prepared || alwaysPrepared, alwaysPrepared) }}>
       <div className="assignment-summary"><span className="spell-card__sigil">{spell.level === 0 ? 'C' : spell.level}</span><div><strong>{spell.name}</strong><span>Assign to {character.name}</span></div></div>
+      <Field label="Spell source" hint="Preparation and limits are tracked separately for each class.">
+        <Select value={sourceClassKey} onChange={(event) => {
+          const nextSource = event.target.value
+          setSourceClassKey(nextSource)
+          if (nextSource === 'wizard' && spell.level > 0) setPrepared(false)
+        }}>
+          {sourceOptions.map((entry) => <option key={entry.class_key} value={entry.class_key}>{classLabel(entry.class_key)} spell</option>)}
+          <option value="dm">General DM-granted spell</option>
+        </Select>
+      </Field>
       <div className="unlock-panel">
         <label className="switch-row"><span><strong>Selected/prepared now</strong><small>Show this spell with the player’s active cards immediately.</small></span><input type="checkbox" checked={prepared} onChange={(event) => setPrepared(event.target.checked)} /></label>
         <label className="switch-row"><span><strong>Always prepared</strong><small>Keep it active and exclude it from the normal spell limit.</small></span><input type="checkbox" checked={alwaysPrepared} onChange={(event) => { setAlwaysPrepared(event.target.checked); if (event.target.checked) setPrepared(true) }} /></label>
       </div>
-      {character.class_key === 'wizard' && <p className="form-tip">For a Wizard, leaving “selected” off adds the spell to the spellbook without preparing it.</p>}
+      {sourceClassKey === 'wizard' && <p className="form-tip">For a Wizard, leaving “selected” off adds the spell to that character’s Wizard spellbook without preparing it.</p>}
+      {sourceClassKey === 'dm' && <p className="form-tip">A general DM-granted spell is not part of a class preparation pool. Turn on “selected” or “always prepared” if it should appear on the player’s active cards.</p>}
       <div className="form-actions"><Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? 'Assigning…' : 'Assign spell'}</Button></div>
     </form>
   )
@@ -407,8 +441,8 @@ export function DmDashboard({
   }, [campaignCharacters])
   useEffect(() => { void loadAssignments(selectedCharacterId) }, [loadAssignments, selectedCharacterId])
   useEffect(() => {
-    if (spellView === 'spellbook' && selectedCharacter?.class_key !== 'wizard') setSpellView('assigned')
-  }, [selectedCharacter?.class_key, spellView])
+    if (spellView === 'spellbook' && !hasCharacterClass(selectedCharacter, 'wizard')) setSpellView('assigned')
+  }, [selectedCharacter, spellView])
   useEffect(() => {
     if (selectedCharacter) return
     setAbilityView('all')
@@ -416,11 +450,11 @@ export function DmDashboard({
   }, [selectedCharacter])
 
   const filteredSpells = useMemo(() => {
-    const isWizard = selectedCharacter?.class_key === 'wizard'
+    const isWizard = hasCharacterClass(selectedCharacter, 'wizard')
     return filterSpells(spells, filters).filter((spell) => (
       matchesDmSpellView(spellAssignments.get(spell.id), spellView, isWizard)
     ))
-  }, [spells, filters, selectedCharacter?.class_key, spellAssignments, spellView])
+  }, [spells, filters, selectedCharacter, spellAssignments, spellView])
   const magicItems = useMemo(
     () => abilities.filter((ability) => ability.ability_kind === 'magic_item'),
     [abilities],
@@ -442,7 +476,9 @@ export function DmDashboard({
       matchesDmAbilityView(abilityAssignments.get(ability.id), abilityView)
       && (abilityClassFilter === 'all'
         || (abilityClassFilter === 'selected'
-          ? !ability.is_system || ability.ability_kind === 'feat' || ability.class_key === selectedCharacter?.class_key
+          ? !ability.is_system || ability.ability_kind === 'feat' || Boolean(
+            selectedCharacter && classRowsFor(selectedCharacter).some((entry) => entry.class_key === ability.class_key)
+          )
           : abilityClassFilter === 'feats'
             ? ability.ability_kind === 'feat'
           : abilityClassFilter === 'custom'
@@ -450,7 +486,7 @@ export function DmDashboard({
           : ability.class_key === abilityClassFilter))
       && (!search || `${ability.name} ${ability.category} ${ability.prerequisite ?? ''} ${ability.tags.join(' ')}`.toLowerCase().includes(search)),
     )
-  }, [nonMagicAbilities, abilityAssignments, abilityClassFilter, abilitySearch, abilityView, selectedCharacter?.class_key])
+  }, [nonMagicAbilities, abilityAssignments, abilityClassFilter, abilitySearch, abilityView, selectedCharacter])
   const assignedAbilityCount = nonMagicAbilities.filter((ability) => assignedAbilityIds.has(ability.id)).length
   const assignedMagicItemCount = magicItems.filter((item) => assignedAbilityIds.has(item.id)).length
   const assignedSpellCount = [...spellAssignments.values()].filter((assignment) => assignment.in_collection).length
@@ -654,7 +690,7 @@ export function DmDashboard({
                   <div className="player-avatar">{initials(character.name)}</div>
                   <div className="player-admin-card__identity">
                     <h3>{character.name}</h3>
-                    <p>Level {character.level} {classLabel(character.class_key)}</p>
+                    <p>Level {character.level} · {characterClassesLabel(character)}</p>
                     <span className={`status-chip ${character.user_id ? 'status-chip--active' : ''}`}>{character.user_id ? 'Activated' : 'Waiting for player'}</span>
                   </div>
                   <dl className="player-admin-card__details">
@@ -679,7 +715,7 @@ export function DmDashboard({
 
       {(tab === 'spells' || tab === 'items' || tab === 'abilities') && (
         <div className="library-toolbar">
-          <label><span>Assign cards to</span><Select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}><option value="">Choose a character</option>{campaignCharacters.map((character) => <option key={character.id} value={character.id}>{character.name} — L{character.level} {classLabel(character.class_key)}</option>)}</Select></label>
+          <label><span>Assign cards to</span><Select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}><option value="">Choose a character</option>{campaignCharacters.map((character) => <option key={character.id} value={character.id}>{character.name} — L{character.level} {characterClassesLabel(character)}</option>)}</Select></label>
           {!selectedCharacter && <span className="toolbar-hint"><Shield size={16} /> Select a character in {selectedCampaign?.name ?? 'this campaign'} to assign cards.</span>}
         </div>
       )}
@@ -705,7 +741,7 @@ export function DmDashboard({
                 <option value="prepared">Prepared or selected now</option>
                 <option value="always">Always prepared</option>
                 <option value="unprepared">Assigned but not active</option>
-                {selectedCharacter?.class_key === 'wizard' && <option value="spellbook">Wizard spellbook</option>}
+                {hasCharacterClass(selectedCharacter, 'wizard') && <option value="spellbook">Wizard spellbook</option>}
               </Select>
             </label>
             {selectedCharacter && <span>{assignedSpellCount} on character · {preparedSpellCount} currently active</span>}
@@ -720,12 +756,15 @@ export function DmDashboard({
                   const assignment = spellAssignments.get(spell.id)
                   const assigned = Boolean(assignment?.in_collection)
                   const alwaysPrepared = Boolean(assignment?.always_prepared)
-                  const status = dmSpellStatusLabel(assignment, selectedCharacter?.class_key === 'wizard')
+                  const status = dmSpellStatusLabel(assignment, hasCharacterClass(selectedCharacter, 'wizard'))
+                  const sources = assignment?.source_class_keys
+                    ?.map((source) => source === 'dm' ? 'DM granted' : classLabel(source))
+                    .join(' / ')
                   return (
                     <SpellCard
                       key={spell.id}
                       spell={spell}
-                      badge={status && selectedCharacter ? `${status} · ${selectedCharacter.name}` : undefined}
+                      badge={status && selectedCharacter ? `${status}${sources ? ` · ${sources}` : ''} · ${selectedCharacter.name}` : undefined}
                       secondaryAction={
                         <div className="card-action-group">
                           <Button variant="ghost" onClick={() => setEditor({ kind: 'spell', spell, duplicate: true })}><BookCopy size={16} /> Duplicate</Button>
@@ -748,7 +787,8 @@ export function DmDashboard({
                               />
                               <span>Always prepared</span>
                             </label>
-                            <Button variant="secondary" disabled={!selectedCharacter || busy} onClick={() => selectedCharacter && void act(() => removeSpellAssignment(selectedCharacter.id, spell.id), `${spell.name} removed from ${selectedCharacter.name}.`, false)}><X size={17} /> Remove</Button>
+                            <Button variant="ghost" disabled={!selectedCharacter || busy} onClick={() => setEditor({ kind: 'assign-spell', spell })}><Plus size={17} /> Add source</Button>
+                            <Button variant="secondary" disabled={!selectedCharacter || busy} onClick={() => selectedCharacter && void act(() => removeSpellAssignment(selectedCharacter.id, spell.id), `${spell.name} removed from ${selectedCharacter.name}.`, false)}><X size={17} /> Remove all</Button>
                           </div>
                         ) : (
                           <Button disabled={!selectedCharacter} onClick={() => setEditor({ kind: 'assign-spell', spell })}><Plus size={17} /> Assign</Button>
@@ -848,7 +888,7 @@ export function DmDashboard({
             </Field>
             <Field label="Show abilities for">
               <Select value={abilityClassFilter} onChange={(event) => setAbilityClassFilter(event.target.value)}>
-                <option value="selected">{selectedCharacter ? `${classLabel(selectedCharacter.class_key)} + feats + custom` : 'Current character + feats + custom'}</option>
+                <option value="selected">{selectedCharacter ? `${characterClassesLabel(selectedCharacter)} + feats + custom` : 'Current character + feats + custom'}</option>
                 <option value="feats">Feats only</option>
                 <option value="custom">Custom cards only</option>
                 <option value="all">Every ability</option>
@@ -944,7 +984,7 @@ export function DmDashboard({
           />
         </Modal>
       )}
-      {editor?.kind === 'edit-character' && <Modal title={`Edit ${editor.character.name}`} description="Automatic limits update when class or level changes unless you set an override." onClose={() => setEditor(null)} wide><CharacterEditor character={editor.character} campaigns={campaigns} busy={busy} onCancel={() => setEditor(null)} onSubmit={(changes) => void act(() => updateCharacter(editor.character.id, changes), `${changes.name} updated.`)} /></Modal>}
+      {editor?.kind === 'edit-character' && <Modal title={`Edit ${editor.character.name}`} description="Add every class and its individual level. Class features and spell preparation update automatically." onClose={() => setEditor(null)} wide><CharacterEditor character={editor.character} campaigns={campaigns} busy={busy} onCancel={() => setEditor(null)} onSubmit={(changes, classes) => void act(() => updateCharacterMulticlass(editor.character.id, changes, classes), `${changes.name} updated.`)} /></Modal>}
       {editor?.kind === 'player-access' && (
         <Modal
           title={editor.character.user_id
@@ -971,7 +1011,7 @@ export function DmDashboard({
       )}
       {editor?.kind === 'spell' && <Modal title={editor.duplicate ? `Duplicate ${editor.spell?.name}` : editor.spell ? `Edit ${editor.spell.name}` : 'Create a custom spell'} description={editor.duplicate ? 'This creates a separate homebrew copy; the original remains unchanged.' : editor.spell ? 'This changes the shared card for every campaign and player who can see it. Existing assignments stay in place.' : 'Fill in the fields and the app will generate the player card.'} onClose={() => setEditor(null)} wide><SpellEditor key={`${editor.spell?.id ?? 'new'}-${editor.duplicate ? 'copy' : 'edit'}`} spell={editor.spell} duplicate={editor.duplicate} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveSpell(input)} /></Modal>}
       {editor?.kind === 'ability' && <Modal title={editor.ability ? `Edit ${editor.ability.name}` : editor.newKind === 'magic_item' ? 'Create a custom magic item' : 'Create an ability card'} description={editor.ability ? 'This changes the shared card for every campaign and assigned player. Automatic class and level unlock rules stay protected.' : editor.newKind === 'magic_item' ? 'Fill in the item details once, then assign the finished card to any number of characters.' : 'Use this for a homebrew feature, feat, trait, or other custom ability.'} onClose={() => setEditor(null)} wide><AbilityEditor key={editor.ability?.id ?? editor.newKind ?? 'new'} ability={editor.ability} abilityKind={editor.newKind} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void saveAbility(input)} /></Modal>}
-      {editor?.kind === 'assign-spell' && selectedCharacter && <Modal title="Assign spell" onClose={() => setEditor(null)}><AssignmentForm spell={editor.spell} character={selectedCharacter} busy={busy} onCancel={() => setEditor(null)} onSubmit={(prepared, alwaysPrepared) => void act(() => assignSpell(selectedCharacter.id, editor.spell.id, { prepared, alwaysPrepared }), `${editor.spell.name} assigned to ${selectedCharacter.name}.`)} /></Modal>}
+      {editor?.kind === 'assign-spell' && selectedCharacter && <Modal title="Assign spell" onClose={() => setEditor(null)}><AssignmentForm spell={editor.spell} character={selectedCharacter} busy={busy} onCancel={() => setEditor(null)} onSubmit={(sourceClassKey, prepared, alwaysPrepared) => void act(() => assignSpell(selectedCharacter.id, editor.spell.id, { sourceClassKey, prepared, alwaysPrepared }), `${editor.spell.name} assigned to ${selectedCharacter.name}.`)} /></Modal>}
     </div>
   )
 }

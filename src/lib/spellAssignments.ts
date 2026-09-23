@@ -6,6 +6,8 @@ export type DmSpellView = 'all' | 'assigned' | 'prepared' | 'always' | 'unprepar
 
 export interface SpellAssignmentState {
   spell_id: string
+  source_class_key: string
+  source_class_keys?: string[]
   in_collection: boolean
   is_prepared: boolean
   always_prepared: boolean

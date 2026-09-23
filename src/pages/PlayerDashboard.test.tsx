@@ -131,10 +131,25 @@ const bundle: PlayerBundle = {
     max_spell_level: 0,
     selection_mode: 'none',
   },
+  classLevels: [{
+    id: 'class-level-id',
+    character_id: character.id,
+    class_key: 'fighter',
+    class_level: 5,
+    subclass: null,
+    is_primary: true,
+    max_cantrips_override: null,
+    max_prepared_override: null,
+    max_spell_level_override: null,
+    created_at: '',
+    updated_at: '',
+  }],
+  progressions: [],
   spellAssignments: [{
     id: 'spell-assignment',
     character_id: character.id,
     spell_id: spell.id,
+    source_class_key: 'dm',
     in_collection: true,
     is_prepared: true,
     always_prepared: false,
@@ -190,6 +205,27 @@ describe('PlayerDashboard card search', () => {
         max_spell_level: 3,
         selection_mode: 'level_choice',
       },
+      classLevels: [{
+        id: 'second-class-level-id',
+        character_id: secondCharacter.id,
+        class_key: 'warlock',
+        class_level: 5,
+        subclass: null,
+        is_primary: true,
+        max_cantrips_override: null,
+        max_prepared_override: null,
+        max_spell_level_override: null,
+        created_at: '',
+        updated_at: '',
+      }],
+      progressions: [{
+        class_key: 'warlock',
+        level: 5,
+        cantrips: 3,
+        prepared_spells: 6,
+        max_spell_level: 3,
+        selection_mode: 'level_choice',
+      }],
       spellAssignments: [],
       abilities: [],
     }
@@ -208,5 +244,74 @@ describe('PlayerDashboard card search', () => {
 
     expect(await screen.findByRole('heading', { name: 'Keth' })).toBeInTheDocument()
     expect(apiMocks.loadPlayerBundle).toHaveBeenLastCalledWith(profile.id, secondCharacter.id)
+  })
+
+  it('keeps Paladin and Cleric preparation pools separate', async () => {
+    const multiclassCharacter: Character = {
+      ...character,
+      class_key: 'paladin',
+      level: 9,
+      preparation_unlocked: true,
+    }
+    const clericSpell: Spell = {
+      ...spell,
+      id: 'cleric-spell-id',
+      slug: 'cleric-spell',
+      name: 'Cleric Prayer',
+      level: 2,
+      classes: ['cleric'],
+      cantrip_upgrade: null,
+    }
+    const paladinSpell: Spell = {
+      ...spell,
+      id: 'paladin-spell-id',
+      slug: 'paladin-spell',
+      name: 'Paladin Oath',
+      level: 2,
+      classes: ['paladin'],
+      cantrip_upgrade: null,
+    }
+    const multiclassBundle: PlayerBundle = {
+      ...bundle,
+      character: multiclassCharacter,
+      availableCharacters: [multiclassCharacter],
+      progression: {
+        class_key: 'paladin', level: 5, cantrips: 0, prepared_spells: 6, max_spell_level: 2, selection_mode: 'daily',
+      },
+      classLevels: [
+        {
+          id: 'paladin-level', character_id: character.id, class_key: 'paladin', class_level: 5, subclass: null, is_primary: true,
+          max_cantrips_override: null, max_prepared_override: null, max_spell_level_override: null, created_at: '', updated_at: '',
+        },
+        {
+          id: 'cleric-level', character_id: character.id, class_key: 'cleric', class_level: 4, subclass: null, is_primary: false,
+          max_cantrips_override: null, max_prepared_override: null, max_spell_level_override: null, created_at: '', updated_at: '',
+        },
+      ],
+      progressions: [
+        { class_key: 'paladin', level: 5, cantrips: 0, prepared_spells: 6, max_spell_level: 2, selection_mode: 'daily' },
+        { class_key: 'cleric', level: 4, cantrips: 3, prepared_spells: 7, max_spell_level: 2, selection_mode: 'daily' },
+      ],
+      spellAssignments: [],
+      abilities: [],
+    }
+    apiMocks.loadPlayerBundle.mockResolvedValue(multiclassBundle)
+    apiMocks.listEligibleSpells.mockResolvedValue([clericSpell, paladinSpell])
+    apiMocks.playerToggleSpell.mockResolvedValue(undefined)
+
+    render(<PlayerDashboard profile={profile} onError={vi.fn()} onSuccess={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Prepare' }))
+    expect(screen.getByText('Paladin Oath')).toBeInTheDocument()
+    expect(screen.queryByText('Cleric Prayer')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Preparation class'), { target: { value: 'cleric' } })
+    expect(screen.getByText('Cleric Prayer')).toBeInTheDocument()
+    expect(screen.queryByText('Paladin Oath')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(apiMocks.playerToggleSpell).toHaveBeenCalledWith(character.id, clericSpell.id, 'cleric', true)
   })
 })

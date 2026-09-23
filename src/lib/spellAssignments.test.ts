@@ -8,6 +8,7 @@ import {
 
 const assignment = (overrides: Partial<SpellAssignmentState> = {}): SpellAssignmentState => ({
   spell_id: 'spell-id',
+  source_class_key: 'wizard',
   in_collection: true,
   is_prepared: false,
   always_prepared: false,

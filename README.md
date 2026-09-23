@@ -12,6 +12,8 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Per-account Classic Compendium, Spelljammer, and Tomb of Annihilation visual themes
 - Multiple campaign groups with separate player rosters and shared spell, magic-item, and ability libraries
 - Multiple characters and campaigns on one player login, with an in-app character switcher
+- First-class multiclass builds with per-class levels, subclasses, automatic features, spell lists, preparation limits, and DM overrides
+- Rules-correct shared multiclass spell-slot summaries, including separate Warlock Pact Magic and 2025 Artificer half-caster progression
 - 339 SRD 5.2 spells imported from the supplied JSON source
 - All 258 magic-item entries from SRD 5.2.1, plus custom magic-item creation with type, rarity, attunement, and rules text
 - 174 built-in base-class feature cards covering every 2024 core class and the 2025 Artificer
@@ -22,7 +24,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Duplicate any SRD spell into an independent editable homebrew version
 - Edit generated spell, class-feature, feat, and magic-item cards globally without breaking assignments or automatic unlock rules
 - Automatic class/level spell and cantrip limits for the 2024 core casters plus the 2025 Artificer
-- Per-character DM overrides for every automatic limit
+- Per-class, per-character DM overrides for every automatic spell limit
 - Automatic class-feature assignments by class and level, with per-card DM hide/restore overrides
 - Built-in and custom magic items can be assigned to any number of characters; players see only their own assigned items
 - DM-assigned cantrips and permanent known spells, plus daily preparation and Wizard spellbook workflows
@@ -101,6 +103,6 @@ The Supabase anonymous key is designed to be public. Access control comes from t
 
 ## Rules and content notes
 
-The automatic limits and base-class feature cards follow the 2024 core classes and the printed 2025 Artificer. Artificers receive Mending automatically as an always-prepared card, outside their normal cantrip limit. Class features appear automatically when a character reaches their required level; the DM can hide a feature or add another card when subclasses, multiclassing, house rules, or campaign rewards require it. Feats are intentionally manual: the DM assigns the chosen feat after checking the prerequisite displayed on its card.
+The automatic limits and base-class feature cards follow the 2024 core classes and the printed 2025 Artificer. Multiclass characters prepare spells separately for each class using that class's individual level; their shared Spellcasting slots are calculated from the 2024 multiclass table, while Warlock Pact Magic remains separate. Artificers receive Mending automatically as an always-prepared card, outside their normal cantrip limit. Class features appear automatically when a character reaches their required class level; the DM can hide a feature or add another card when subclasses, house rules, or campaign rewards require it. Feats are intentionally manual: the DM assigns the chosen feat after checking the prerequisite displayed on its card.
 
 The built-in spell and magic-item libraries are SRD content. The magic-item tab contains the complete SRD 5.2.1 catalog; items published only in the Dungeon Master’s Guide and not released in the SRD are not copied into the repository. See [SRD-ATTRIBUTION.md](SRD-ATTRIBUTION.md). Project source code is licensed under [MIT](LICENSE).

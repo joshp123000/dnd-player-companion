@@ -17,13 +17,14 @@ You only need to do the Supabase setup once. After that, changes pushed to `main
    7. `supabase/migrations/202609200006_magic_items.sql`
    8. `supabase/migrations/202609200007_dm_card_edits.sql`
    9. `supabase/migrations/202609230001_multi_character_accounts.sql`
-   10. `supabase/seed.sql`
+   10. `supabase/migrations/202609230002_multiclassing.sql`
+   11. `supabase/seed.sql`
 
 The magic-item migration imports all 258 SRD 5.2.1 items. The final script imports all 339 SRD spells. Both update built-in records without replacing custom cards or changing assignment IDs.
 
 ### Existing installations
 
-For an existing installation that already has the magic-item catalog, run `supabase/migrations/202609230001_multi_character_accounts.sql` to let one login use multiple characters. Run `202609200007_dm_card_edits.sql` first if generated-card editing is not installed yet. If it is missing magic items or feats, run `202609200005_phb_feats.sql` and `202609200006_magic_items.sql` first as needed. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
+For an existing installation that already has the magic-item catalog, run `supabase/migrations/202609230001_multi_character_accounts.sql` to let one login use multiple characters, then run `supabase/migrations/202609230002_multiclassing.sql` for per-class levels and spell preparation. Run `202609200007_dm_card_edits.sql` first if generated-card editing is not installed yet. If it is missing magic items or feats, run `202609200005_phb_feats.sql` and `202609200006_magic_items.sql` first as needed. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
 
 ## 2. Create the first DM account
 
@@ -85,6 +86,9 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Move a character between groups from that character's **Edit** form. Empty campaigns can be deleted; campaigns containing players cannot.
 - If one person plays in more than one campaign, open their existing character and choose **Add character**. Select the other campaign and enter the new character's class and level. Both characters use the same username and password, and the player switches between them from the **Character & campaign** menu.
 - **Add character** also works before first-time setup. The player's one activation claims every linked character at once.
+- To multiclass a character, choose **Edit → Add another class**, set each class's individual level and subclass, choose one primary class for the short DM label, and save. The total of all class levels cannot exceed 20.
+- Multiclass base-class features unlock automatically from each individual class level. The player’s **Prepare** tab has a class selector and a separate limit/list for every daily-preparation class or Wizard.
+- The displayed shared spell slots use the 2024 multiclass rules. Those higher slots can upcast prepared spells, but never unlock a higher-level spell for a class that could not prepare it at its own level. Warlock Pact Magic is displayed separately.
 - Use **Open prep for everyone** after a Long Rest so prepared casters can change their leveled spells. Click it again to lock preparation.
 - Prepared casters can select or remove several leveled spells on the preparation page, then use **Save changes** once when they are finished. Cantrips never appear on that page.
 - Assign cantrips and permanent known spells yourself from the **Spell library** after the player chooses them from the book.
@@ -98,7 +102,7 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Players see their assigned items in their own **Magic items** tab and alongside their other cards under **All cards**.
 - Players can search within **All cards**, **Spells**, **Magic items**, **Abilities**, and **Prepare**. Search includes card text and metadata, not only card names.
 - Use **Edit** on any spell, class feature, feat, magic item, or custom card to correct its shared card text. Changes appear in every campaign, existing assignments stay in place, and generated cards receive a **DM edited** badge. Automatic class and level metadata remains protected.
-- Use overrides for feats, multiclassing, house rules, or unusual rewards.
+- Use overrides for house rules or unusual rewards; normal base-class multiclass features and preparation are automatic.
 - Turn on **Preparation unlocked** after a long rest for Artificers, Clerics, Druids, Paladins, and Wizards.
 - For Bards, Rangers, Sorcerers, and Warlocks, assign their chosen spells with **Selected/prepared now** turned on so the cards appear immediately.
 - For Wizards, assign leveled spells without selecting them to add them to the spellbook. Assign Wizard cantrips with **Selected/prepared now** turned on. The player can prepare leveled spellbook entries while preparation is unlocked.

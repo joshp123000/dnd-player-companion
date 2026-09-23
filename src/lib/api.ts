@@ -6,6 +6,8 @@ import type {
   Campaign,
   Character,
   CharacterAbility,
+  CharacterClass,
+  CharacterClassInput,
   CharacterSpell,
   ClassProgression,
   PlayerBundle,
@@ -164,10 +166,47 @@ export const loadPlayerBundle = async (
     .order('created_at')
     .order('name')
   if (characterError) throw characterError
-  const availableCharacters = (characterData ?? []) as Character[]
+  const bareCharacters = (characterData ?? []) as Character[]
+  const characterIds = bareCharacters.map((row) => row.id)
+  const { data: classData, error: classError } = characterIds.length > 0
+    ? await client
+      .from('character_classes')
+      .select('*')
+      .in('character_id', characterIds)
+      .order('is_primary', { ascending: false })
+      .order('class_key')
+    : { data: [], error: null }
+  if (classError) throw classError
+
+  const classesByCharacter = new Map<string, CharacterClass[]>()
+  for (const classLevel of (classData ?? []) as CharacterClass[]) {
+    const rows = classesByCharacter.get(classLevel.character_id) ?? []
+    rows.push(classLevel)
+    classesByCharacter.set(classLevel.character_id, rows)
+  }
+  const availableCharacters = bareCharacters.map((row) => ({
+    ...row,
+    class_levels: classesByCharacter.get(row.id) ?? [],
+  }))
   const character = availableCharacters.find((row) => row.id === preferredCharacterId)
     ?? availableCharacters[0]
   if (!character) throw new Error('No character is attached to this account yet.')
+
+  const classLevels = character.class_levels?.length
+    ? character.class_levels
+    : [{
+      id: `legacy-${character.id}`,
+      character_id: character.id,
+      class_key: character.class_key,
+      class_level: character.level,
+      subclass: character.subclass,
+      is_primary: true,
+      max_cantrips_override: character.max_cantrips_override,
+      max_prepared_override: character.max_prepared_override,
+      max_spell_level_override: character.max_spell_level_override,
+      created_at: character.created_at,
+      updated_at: character.updated_at,
+    }]
 
   const campaignIds = [...new Set(availableCharacters.map((row) => row.campaign_id))]
 
@@ -181,9 +220,7 @@ export const loadPlayerBundle = async (
     client
       .from('class_progression')
       .select('*')
-      .eq('class_key', character.class_key)
-      .eq('level', character.level)
-      .maybeSingle(),
+      .in('class_key', classLevels.map((entry) => entry.class_key)),
     client
       .from('character_spells')
       .select('*, spell:spells(*)')
@@ -202,26 +239,44 @@ export const loadPlayerBundle = async (
   if (spellResult.error) throw spellResult.error
   if (abilityResult.error) throw abilityResult.error
 
+  const progressions = ((progressionResult.data ?? []) as ClassProgression[]).filter((row) =>
+    classLevels.some((entry) => entry.class_key === row.class_key && entry.class_level === row.level),
+  )
+  const primaryClass = classLevels.find((entry) => entry.is_primary) ?? classLevels[0]
+
   return {
     character,
     availableCharacters,
     campaigns: (campaignResult.data ?? []) as Campaign[],
-    progression: (progressionResult.data as ClassProgression | null) ?? null,
+    progression: progressions.find((row) => (
+      row.class_key === primaryClass?.class_key && row.level === primaryClass?.class_level
+    )) ?? null,
+    classLevels,
+    progressions,
     spellAssignments: (spellResult.data ?? []) as CharacterSpell[],
     abilities: (abilityResult.data ?? []) as CharacterAbility[],
   }
 }
 
 export const listEligibleSpells = async (
-  character: Character,
-  maxSpellLevel: number,
+  classLevels: CharacterClass[],
+  progressions: ClassProgression[],
 ): Promise<Spell[]> => {
+  const spellcastingClasses = classLevels.filter((entry) =>
+    progressions.some((row) => row.class_key === entry.class_key && row.level === entry.class_level),
+  )
+  if (spellcastingClasses.length === 0) return []
+  const maxSpellLevel = Math.max(0, ...spellcastingClasses.map((entry) =>
+    entry.max_spell_level_override
+      ?? progressions.find((row) => row.class_key === entry.class_key && row.level === entry.class_level)?.max_spell_level
+      ?? 0,
+  ))
   const client = requireSupabase()
   const query = client
     .from('spells')
     .select('*')
     .lte('level', maxSpellLevel)
-    .contains('classes', [character.class_key])
+    .overlaps('classes', spellcastingClasses.map((entry) => entry.class_key))
     .order('level')
     .order('name')
   const { data, error } = await query
@@ -232,11 +287,13 @@ export const listEligibleSpells = async (
 export const playerToggleSpell = async (
   characterId: string,
   spellId: string,
+  sourceClassKey: string,
   active: boolean,
 ) => {
   const { error } = await requireSupabase().rpc('player_toggle_spell', {
     p_character_id: characterId,
     p_spell_id: spellId,
+    p_source_class_key: sourceClassKey,
     p_active: active,
   })
   if (error) throw error
@@ -255,12 +312,31 @@ export const setAllPreparationUnlocked = async (
 }
 
 export const listCharacters = async (): Promise<Character[]> => {
-  const { data, error } = await requireSupabase()
+  const client = requireSupabase()
+  const { data, error } = await client
     .from('characters')
     .select('*')
     .order('name')
   if (error) throw error
-  return (data ?? []) as Character[]
+  const characters = (data ?? []) as Character[]
+  if (characters.length === 0) return []
+  const { data: classData, error: classError } = await client
+    .from('character_classes')
+    .select('*')
+    .in('character_id', characters.map((character) => character.id))
+    .order('is_primary', { ascending: false })
+    .order('class_key')
+  if (classError) throw classError
+  const classesByCharacter = new Map<string, CharacterClass[]>()
+  for (const classLevel of (classData ?? []) as CharacterClass[]) {
+    const rows = classesByCharacter.get(classLevel.character_id) ?? []
+    rows.push(classLevel)
+    classesByCharacter.set(classLevel.character_id, rows)
+  }
+  return characters.map((character) => ({
+    ...character,
+    class_levels: classesByCharacter.get(character.id) ?? [],
+  }))
 }
 
 export const listCampaigns = async (): Promise<Campaign[]> => {
@@ -345,6 +421,22 @@ export const updateCharacter = async (characterId: string, changes: Partial<Char
   if (error) throw error
 }
 
+export const updateCharacterMulticlass = async (
+  characterId: string,
+  changes: Pick<Character, 'campaign_id' | 'name' | 'notes' | 'preparation_unlocked'>,
+  classes: CharacterClassInput[],
+) => {
+  const { error } = await requireSupabase().rpc('dm_update_character_multiclass', {
+    p_character_id: characterId,
+    p_campaign_id: changes.campaign_id,
+    p_name: changes.name.trim(),
+    p_notes: changes.notes?.trim() || null,
+    p_preparation_unlocked: changes.preparation_unlocked,
+    p_classes: classes,
+  })
+  if (error) throw error
+}
+
 export const resetPlayerLogin = async (
   characterId: string,
   username: string,
@@ -419,19 +511,15 @@ export const deleteSpell = async (spellId: string) => {
 export const assignSpell = async (
   characterId: string,
   spellId: string,
-  options: { prepared?: boolean; alwaysPrepared?: boolean } = {},
+  options: { sourceClassKey?: string; prepared?: boolean; alwaysPrepared?: boolean } = {},
 ) => {
-  const { error } = await requireSupabase().from('character_spells').upsert(
-    {
-      character_id: characterId,
-      spell_id: spellId,
-      in_collection: true,
-      is_prepared: options.prepared ?? false,
-      always_prepared: options.alwaysPrepared ?? false,
-      assigned_by_dm: true,
-    },
-    { onConflict: 'character_id,spell_id' },
-  )
+  const { error } = await requireSupabase().rpc('dm_assign_spell', {
+    p_character_id: characterId,
+    p_spell_id: spellId,
+    p_source_class_key: options.sourceClassKey ?? 'dm',
+    p_prepared: options.prepared ?? false,
+    p_always_prepared: options.alwaysPrepared ?? false,
+  })
   if (error) throw error
 }
 
@@ -532,16 +620,25 @@ export const setAbilityAssignment = async (
 export const listCharacterSpellAssignments = async (characterId: string): Promise<SpellAssignmentSummary[]> => {
   const { data, error } = await requireSupabase()
     .from('character_spells')
-    .select('spell_id, in_collection, is_prepared, always_prepared, assigned_by_dm')
+    .select('spell_id, source_class_key, in_collection, is_prepared, always_prepared, assigned_by_dm')
     .eq('character_id', characterId)
   if (error) throw error
-  return (data ?? []).map((row) => ({
-    spell_id: String(row.spell_id),
-    in_collection: Boolean(row.in_collection),
-    is_prepared: Boolean(row.is_prepared),
-    always_prepared: Boolean(row.always_prepared),
-    assigned_by_dm: Boolean(row.assigned_by_dm),
-  }))
+  const summaries = new Map<string, SpellAssignmentSummary>()
+  for (const row of data ?? []) {
+    const spellId = String(row.spell_id)
+    const current = summaries.get(spellId)
+    const sourceClassKey = String(row.source_class_key)
+    summaries.set(spellId, {
+      spell_id: spellId,
+      source_class_key: current?.source_class_key ?? sourceClassKey,
+      source_class_keys: [...new Set([...(current?.source_class_keys ?? []), sourceClassKey])],
+      in_collection: Boolean(current?.in_collection || row.in_collection),
+      is_prepared: Boolean(current?.is_prepared || row.is_prepared),
+      always_prepared: Boolean(current?.always_prepared || row.always_prepared),
+      assigned_by_dm: Boolean(current?.assigned_by_dm || row.assigned_by_dm),
+    })
+  }
+  return [...summaries.values()]
 }
 
 export const listCharacterAbilityAssignments = async (

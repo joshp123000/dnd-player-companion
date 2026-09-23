@@ -37,6 +37,31 @@ export interface Character {
   max_spell_level_override: number | null
   created_at: string
   updated_at: string
+  class_levels?: CharacterClass[]
+}
+
+export interface CharacterClass {
+  id: string
+  character_id: string
+  class_key: string
+  class_level: number
+  subclass: string | null
+  is_primary: boolean
+  max_cantrips_override: number | null
+  max_prepared_override: number | null
+  max_spell_level_override: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CharacterClassInput {
+  class_key: string
+  class_level: number
+  subclass: string | null
+  is_primary: boolean
+  max_cantrips_override: number | null
+  max_prepared_override: number | null
+  max_spell_level_override: number | null
 }
 
 export interface ClassProgression {
@@ -82,6 +107,7 @@ export interface CharacterSpell {
   id: string
   character_id: string
   spell_id: string
+  source_class_key: string
   in_collection: boolean
   is_prepared: boolean
   always_prepared: boolean
@@ -150,6 +176,8 @@ export interface PlayerBundle {
   availableCharacters: Character[]
   campaigns: Campaign[]
   progression: ClassProgression | null
+  classLevels: CharacterClass[]
+  progressions: ClassProgression[]
   spellAssignments: CharacterSpell[]
   abilities: CharacterAbility[]
 }
