@@ -11,6 +11,7 @@ The frontend is a static React app designed for GitHub Pages. Supabase supplies 
 - Self-service password changes plus DM-controlled account recovery and username changes
 - Per-account Classic Compendium, Spelljammer, and Tomb of Annihilation visual themes
 - Multiple campaign groups with separate player rosters and shared spell, magic-item, and ability libraries
+- Multiple characters and campaigns on one player login, with an in-app character switcher
 - 339 SRD 5.2 spells imported from the supplied JSON source
 - All 258 magic-item entries from SRD 5.2.1, plus custom magic-item creation with type, rarity, attunement, and rules text
 - 174 built-in base-class feature cards covering every 2024 core class and the 2025 Artificer

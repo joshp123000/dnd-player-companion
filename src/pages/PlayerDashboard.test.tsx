@@ -42,6 +42,14 @@ const character: Character = {
   updated_at: '',
 }
 
+const secondCharacter: Character = {
+  ...character,
+  id: 'second-character-id',
+  campaign_id: 'second-campaign-id',
+  name: 'Keth',
+  class_key: 'warlock',
+}
+
 const spell: Spell = {
   id: 'spell-id',
   slug: 'fire-bolt',
@@ -113,6 +121,8 @@ const item = ability({
 
 const bundle: PlayerBundle = {
   character,
+  availableCharacters: [character],
+  campaigns: [{ id: 'campaign-id', name: 'Spelljammer', created_by: 'dm-id', created_at: '', updated_at: '' }],
   progression: {
     class_key: 'fighter',
     level: 5,
@@ -159,5 +169,44 @@ describe('PlayerDashboard card search', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Abilities' }))
     expect(screen.getByLabelText('Search abilities')).toBeInTheDocument()
+  })
+
+  it('switches between characters and campaigns on one account', async () => {
+    const campaigns = [
+      { id: 'campaign-id', name: 'Spelljammer', created_by: 'dm-id', created_at: '', updated_at: '' },
+      { id: 'second-campaign-id', name: 'Tomb of Annihilation', created_by: 'dm-id', created_at: '', updated_at: '' },
+    ]
+    const firstBundle = { ...bundle, availableCharacters: [character, secondCharacter], campaigns }
+    const secondBundle: PlayerBundle = {
+      ...bundle,
+      character: secondCharacter,
+      availableCharacters: [character, secondCharacter],
+      campaigns,
+      progression: {
+        class_key: 'warlock',
+        level: 5,
+        cantrips: 3,
+        prepared_spells: 6,
+        max_spell_level: 3,
+        selection_mode: 'level_choice',
+      },
+      spellAssignments: [],
+      abilities: [],
+    }
+    apiMocks.loadPlayerBundle
+      .mockResolvedValueOnce(firstBundle)
+      .mockResolvedValueOnce(secondBundle)
+    apiMocks.listEligibleSpells.mockResolvedValue([])
+
+    render(<PlayerDashboard profile={profile} onError={vi.fn()} onSuccess={vi.fn()} />)
+
+    const switcher = await screen.findByLabelText('Character and campaign')
+    expect(screen.getByRole('option', { name: 'Lyra — Spelljammer' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Keth — Tomb of Annihilation' })).toBeInTheDocument()
+
+    fireEvent.change(switcher, { target: { value: secondCharacter.id } })
+
+    expect(await screen.findByRole('heading', { name: 'Keth' })).toBeInTheDocument()
+    expect(apiMocks.loadPlayerBundle).toHaveBeenLastCalledWith(profile.id, secondCharacter.id)
   })
 })

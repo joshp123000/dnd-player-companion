@@ -147,6 +147,8 @@ export interface EffectiveLimits {
 
 export interface PlayerBundle {
   character: Character
+  availableCharacters: Character[]
+  campaigns: Campaign[]
   progression: ClassProgression | null
   spellAssignments: CharacterSpell[]
   abilities: CharacterAbility[]

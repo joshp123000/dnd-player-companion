@@ -27,6 +27,14 @@ export interface CreateCharacterInput {
   campaignId: string
 }
 
+export interface AddCharacterToAccountInput {
+  accountCharacterId: string
+  characterName: string
+  classKey: string
+  level: number
+  campaignId: string
+}
+
 export interface SpellInput {
   name: string
   level: number
@@ -144,17 +152,32 @@ export const loadProfile = async (userId: string): Promise<Profile> => {
   return data as Profile
 }
 
-export const loadPlayerBundle = async (userId: string): Promise<PlayerBundle> => {
+export const loadPlayerBundle = async (
+  userId: string,
+  preferredCharacterId?: string,
+): Promise<PlayerBundle> => {
   const client = requireSupabase()
   const { data: characterData, error: characterError } = await client
     .from('characters')
     .select('*')
     .eq('user_id', userId)
-    .single()
+    .order('created_at')
+    .order('name')
   if (characterError) throw characterError
-  const character = characterData as Character
+  const availableCharacters = (characterData ?? []) as Character[]
+  const character = availableCharacters.find((row) => row.id === preferredCharacterId)
+    ?? availableCharacters[0]
+  if (!character) throw new Error('No character is attached to this account yet.')
 
-  const [progressionResult, spellResult, abilityResult] = await Promise.all([
+  const campaignIds = [...new Set(availableCharacters.map((row) => row.campaign_id))]
+
+  const [campaignResult, progressionResult, spellResult, abilityResult] = await Promise.all([
+    client
+      .from('campaigns')
+      .select('*')
+      .in('id', campaignIds)
+      .order('created_at')
+      .order('name'),
     client
       .from('class_progression')
       .select('*')
@@ -174,12 +197,15 @@ export const loadPlayerBundle = async (userId: string): Promise<PlayerBundle> =>
       .order('sort_order'),
   ])
 
+  if (campaignResult.error) throw campaignResult.error
   if (progressionResult.error) throw progressionResult.error
   if (spellResult.error) throw spellResult.error
   if (abilityResult.error) throw abilityResult.error
 
   return {
     character,
+    availableCharacters,
+    campaigns: (campaignResult.data ?? []) as Campaign[],
     progression: (progressionResult.data as ClassProgression | null) ?? null,
     spellAssignments: (spellResult.data ?? []) as CharacterSpell[],
     abilities: (abilityResult.data ?? []) as CharacterAbility[],
@@ -277,6 +303,20 @@ export const createCharacter = async (input: CreateCharacterInput): Promise<stri
   const { data, error } = await requireSupabase().rpc('dm_create_character', {
     p_username: normalizeUsername(input.username),
     p_activation_code: input.activationCode.trim(),
+    p_character_name: input.characterName.trim(),
+    p_class_key: input.classKey,
+    p_level: input.level,
+    p_campaign_id: input.campaignId,
+  })
+  if (error) throw error
+  return String(data)
+}
+
+export const addCharacterToAccount = async (
+  input: AddCharacterToAccountInput,
+): Promise<string> => {
+  const { data, error } = await requireSupabase().rpc('dm_add_character_to_account', {
+    p_account_character_id: input.accountCharacterId,
     p_character_name: input.characterName.trim(),
     p_class_key: input.classKey,
     p_level: input.level,

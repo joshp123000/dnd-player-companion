@@ -16,13 +16,14 @@ You only need to do the Supabase setup once. After that, changes pushed to `main
    6. `supabase/migrations/202609200005_phb_feats.sql`
    7. `supabase/migrations/202609200006_magic_items.sql`
    8. `supabase/migrations/202609200007_dm_card_edits.sql`
-   9. `supabase/seed.sql`
+   9. `supabase/migrations/202609230001_multi_character_accounts.sql`
+   10. `supabase/seed.sql`
 
 The magic-item migration imports all 258 SRD 5.2.1 items. The final script imports all 339 SRD spells. Both update built-in records without replacing custom cards or changing assignment IDs.
 
 ### Existing installations
 
-For an existing installation that already has the magic-item catalog, run `supabase/migrations/202609200007_dm_card_edits.sql` to enable editing generated cards. If it is missing magic items or feats, run `202609200005_phb_feats.sql` and `202609200006_magic_items.sql` first as needed. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
+For an existing installation that already has the magic-item catalog, run `supabase/migrations/202609230001_multi_character_accounts.sql` to let one login use multiple characters. Run `202609200007_dm_card_edits.sql` first if generated-card editing is not installed yet. If it is missing magic items or feats, run `202609200005_phb_feats.sql` and `202609200006_magic_items.sql` first as needed. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
 
 ## 2. Create the first DM account
 
@@ -82,7 +83,8 @@ The activation code is stored as a one-way hash and is erased after successful u
 - Use the campaign selector above the DM tabs to switch rosters.
 - Choose **New campaign** to add another group. Spells, magic items, and abilities remain shared between every campaign.
 - Move a character between groups from that character's **Edit** form. Empty campaigns can be deleted; campaigns containing players cannot.
-- If one person plays in both campaigns, create a separate player username and character for each campaign.
+- If one person plays in more than one campaign, open their existing character and choose **Add character**. Select the other campaign and enter the new character's class and level. Both characters use the same username and password, and the player switches between them from the **Character & campaign** menu.
+- **Add character** also works before first-time setup. The player's one activation claims every linked character at once.
 - Use **Open prep for everyone** after a Long Rest so prepared casters can change their leveled spells. Click it again to lock preparation.
 - Prepared casters can select or remove several leveled spells on the preparation page, then use **Save changes** once when they are finished. Cantrips never appear on that page.
 - Assign cantrips and permanent known spells yourself from the **Spell library** after the player chooses them from the book.
@@ -114,7 +116,7 @@ Player accounts intentionally do not use real email addresses, so forgotten pass
 3. Give the player those details privately.
 4. The player chooses **First-time setup** and creates a new private password.
 
-The reset removes the old login and sessions, but preserves the character, campaign membership, spells, abilities, and DM settings. For a player who has not activated yet, **Access setup** can change the username or unused activation code without deleting anything.
+The reset removes the old login and sessions, but preserves every character linked to the account, their campaign memberships, spells, abilities, and DM settings. For a player who has not activated yet, **Access setup** changes the shared username or unused activation code for every linked character.
 
 ## Updating the spell source
 

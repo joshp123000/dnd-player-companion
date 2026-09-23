@@ -4,7 +4,7 @@ import { AbilityCard } from '../components/AbilityCard'
 import { MagicItemCard } from '../components/MagicItemCard'
 import { SpellCard } from '../components/SpellCard'
 import { SpellFilters } from '../components/SpellFilters'
-import { Button, EmptyState, Input, LoadingState, ProgressMeter, SegmentedControl } from '../components/ui'
+import { Button, EmptyState, Input, LoadingState, ProgressMeter, SegmentedControl, Select } from '../components/ui'
 import { listEligibleSpells, loadPlayerBundle, playerToggleSpell } from '../lib/api'
 import { matchesAbilitySearch } from '../lib/cardSearch'
 import { friendlyError } from '../lib/format'
@@ -34,10 +34,10 @@ export function PlayerDashboard({
   const [savingSelection, setSavingSelection] = useState(false)
   const [draftSelectedSpellIds, setDraftSelectedSpellIds] = useState<Set<string>>(new Set())
 
-  const load = useCallback(async (showLoader = true) => {
+  const load = useCallback(async (showLoader = true, characterId?: string) => {
     if (showLoader) setLoading(true)
     try {
-      const nextBundle = await loadPlayerBundle(profile.id)
+      const nextBundle = await loadPlayerBundle(profile.id, characterId)
       const limits = effectiveLimits(nextBundle.character, nextBundle.progression)
       const spells = await listEligibleSpells(nextBundle.character, limits.maxSpellLevel)
       setBundle(nextBundle)
@@ -138,14 +138,24 @@ export function PlayerDashboard({
       for (const spellId of selectionChanges.added) {
         await playerToggleSpell(character.id, spellId, true)
       }
-      await load(false)
+      await load(false, character.id)
       onSuccess(`${selectionChangeCount} spell ${selectionChangeCount === 1 ? 'change' : 'changes'} saved.`)
     } catch (error) {
-      await load(false)
+      await load(false, character.id)
       onError(`The full selection could not be saved. ${friendlyError(error)}`)
     } finally {
       setSavingSelection(false)
     }
+  }
+
+  const campaignById = new Map(bundle.campaigns.map((campaign) => [campaign.id, campaign]))
+  const activeCampaign = campaignById.get(character.campaign_id)
+  const switchCharacter = (characterId: string) => {
+    if (characterId === character.id) return
+    if (hasUnsavedSelection && !window.confirm('Switch characters and discard the unsaved spell changes?')) return
+    setTab('cards')
+    setFilters(initialFilters)
+    void load(true, characterId)
   }
 
   return (
@@ -154,13 +164,31 @@ export function PlayerDashboard({
         <div>
           <span className="eyebrow">Player dashboard</span>
           <h1>{character.name}</h1>
-          <p>Level {character.level} {character.subclass ? `${character.subclass} ` : ''}{classLabel(character.class_key)}</p>
+          <p>Level {character.level} {character.subclass ? `${character.subclass} ` : ''}{classLabel(character.class_key)}{activeCampaign ? ` · ${activeCampaign.name}` : ''}</p>
         </div>
-        <div className="character-hero__meters">
-          {limits.cantrips > 0 && <ProgressMeter value={draftCantripCount} max={limits.cantrips} label="Cantrips" />}
-          {limits.preparedSpells > 0 && (
-            <ProgressMeter value={draftLeveledCount} max={limits.preparedSpells} label={selectionLabel(limits.selectionMode)} />
+        <div className="character-hero__side">
+          {bundle.availableCharacters.length > 1 && (
+            <label className="character-switcher">
+              <span>Character &amp; campaign</span>
+              <Select
+                aria-label="Character and campaign"
+                value={character.id}
+                onChange={(event) => switchCharacter(event.target.value)}
+              >
+                {bundle.availableCharacters.map((option) => (
+                  <option value={option.id} key={option.id}>
+                    {option.name} — {campaignById.get(option.campaign_id)?.name ?? 'Campaign'}
+                  </option>
+                ))}
+              </Select>
+            </label>
           )}
+          <div className="character-hero__meters">
+            {limits.cantrips > 0 && <ProgressMeter value={draftCantripCount} max={limits.cantrips} label="Cantrips" />}
+            {limits.preparedSpells > 0 && (
+              <ProgressMeter value={draftLeveledCount} max={limits.preparedSpells} label={selectionLabel(limits.selectionMode)} />
+            )}
+          </div>
         </div>
       </section>
 

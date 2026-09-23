@@ -27,6 +27,7 @@ import { SpellEditor } from '../components/SpellEditor'
 import { SpellFilters } from '../components/SpellFilters'
 import { Button, EmptyState, Field, Input, LoadingState, Modal, SegmentedControl, Select } from '../components/ui'
 import {
+  addCharacterToAccount,
   assignSpell,
   createAbility,
   createCampaign,
@@ -74,6 +75,7 @@ type DmTab = 'players' | 'spells' | 'items' | 'abilities'
 type EditorState =
   | { kind: 'campaign'; campaign?: Campaign }
   | { kind: 'create-character' }
+  | { kind: 'add-account-character'; accountCharacter: Character }
   | { kind: 'edit-character'; character: Character }
   | { kind: 'player-access'; character: Character }
   | { kind: 'spell'; spell?: Spell; duplicate?: boolean }
@@ -139,6 +141,56 @@ function CreateCharacterForm({
   )
 }
 
+function AddAccountCharacterForm({
+  accountCharacter,
+  campaigns,
+  initialCampaignId,
+  busy,
+  onSubmit,
+  onCancel,
+}: {
+  accountCharacter: Character
+  campaigns: Campaign[]
+  initialCampaignId: string
+  busy: boolean
+  onSubmit: (input: { characterName: string; classKey: string; level: number; campaignId: string }) => void
+  onCancel: () => void
+}) {
+  const [characterName, setCharacterName] = useState('')
+  const [classKey, setClassKey] = useState('fighter')
+  const [level, setLevel] = useState(1)
+  const [campaignId, setCampaignId] = useState(initialCampaignId)
+
+  return (
+    <form className="editor-form" onSubmit={(event) => {
+      event.preventDefault()
+      onSubmit({ characterName, classKey, level, campaignId })
+    }}>
+      <div className="form-message form-message--info">
+        <strong>{accountCharacter.login_username}</strong> will use the same username and password for both characters.
+      </div>
+      <Field label="Campaign" hint="Choose the campaign this character belongs to.">
+        <Select value={campaignId} onChange={(event) => setCampaignId(event.target.value)} required>
+          {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}
+        </Select>
+      </Field>
+      <div className="form-grid form-grid--3">
+        <Field label="Character name"><Input value={characterName} onChange={(event) => setCharacterName(event.target.value)} required autoFocus /></Field>
+        <Field label="Class">
+          <Select value={classKey} onChange={(event) => setClassKey(event.target.value)}>
+            {CHARACTER_CLASSES.map((key) => <option value={key} key={key}>{classLabel(key)}</option>)}
+          </Select>
+        </Field>
+        <Field label="Level"><Input type="number" min={1} max={20} value={level} onChange={(event) => setLevel(Number(event.target.value))} required /></Field>
+      </div>
+      <div className="form-actions">
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" disabled={busy}>{busy ? 'Adding…' : 'Add to account'}</Button>
+      </div>
+    </form>
+  )
+}
+
 function CampaignForm({
   campaign,
   busy,
@@ -167,11 +219,13 @@ function CampaignForm({
 
 function PlayerAccessForm({
   character,
+  accountCharacterCount,
   busy,
   onSubmit,
   onCancel,
 }: {
   character: Character
+  accountCharacterCount: number
   busy: boolean
   onSubmit: (username: string, code: string) => void
   onCancel: () => void
@@ -183,13 +237,17 @@ function PlayerAccessForm({
   return (
     <form className="editor-form" onSubmit={(event) => {
       event.preventDefault()
-      if (active && !window.confirm(`Reset ${character.name}'s login? Their current password and signed-in sessions will stop working.`)) return
+      if (active && !window.confirm(
+        accountCharacterCount > 1
+          ? `Reset ${character.login_username}'s login for all ${accountCharacterCount} linked characters? Their current password and signed-in sessions will stop working.`
+          : `Reset ${character.name}'s login? Their current password and signed-in sessions will stop working.`,
+      )) return
       onSubmit(username, code)
     }}>
       <div className={`form-message ${active ? 'form-message--error' : 'form-message--info'}`}>
         {active
-          ? <>This removes only the current login. <strong>The character, campaign, spells, and abilities will not be deleted.</strong></>
-          : <>Update the username or replace the unused one-time code before this player activates.</>}
+          ? <>This removes only the current login for {accountCharacterCount > 1 ? `all ${accountCharacterCount} linked characters` : 'this character'}. <strong>Campaigns, cards, and character data will not be deleted.</strong></>
+          : <>Update the shared username or replace the unused one-time code before this player activates.</>}
       </div>
       <Field label="Player username" hint="You may keep the current username or enter a new one.">
         <Input
@@ -206,7 +264,7 @@ function PlayerAccessForm({
       <div className="form-actions">
         <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
         <Button type="submit" variant={active ? 'danger' : 'primary'} disabled={busy}>
-          {busy ? 'Saving…' : active ? 'Reset player login' : 'Save access details'}
+          {busy ? 'Saving…' : active ? accountCharacterCount > 1 ? 'Reset account login' : 'Reset player login' : 'Save access details'}
         </Button>
       </div>
     </form>
@@ -284,6 +342,11 @@ export function DmDashboard({
   const allPreparationUnlocked = characters.length > 0 && characters.every(
     (character) => character.preparation_unlocked,
   )
+  const accountCharactersFor = (character: Character) => characters.filter((candidate) => (
+    character.user_id
+      ? candidate.user_id === character.user_id
+      : candidate.user_id === null && candidate.login_username === character.login_username
+  ))
 
   const load = useCallback(async (preferredCampaignId?: string) => {
     setLoading(true)
@@ -522,7 +585,7 @@ export function DmDashboard({
     <div className="dm-dashboard">
       <section className="dm-hero">
         <div><span className="eyebrow">Dungeon Master workshop</span><h1>Campaign control room</h1><p>Create player access, build cards, and decide exactly what each character can see.</p></div>
-        <div className="dm-hero__stats"><span><strong>{campaignCharacters.length}</strong> players here</span><span><strong>{campaigns.length}</strong> campaigns</span><span><strong>{spells.length + abilities.length}</strong> shared cards</span></div>
+        <div className="dm-hero__stats"><span><strong>{campaignCharacters.length}</strong> characters here</span><span><strong>{campaigns.length}</strong> campaigns</span><span><strong>{spells.length + abilities.length}</strong> shared cards</span></div>
       </section>
 
       <section className="campaign-bar" aria-label="Campaign controls">
@@ -540,7 +603,7 @@ export function DmDashboard({
             {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}
           </Select>
         </label>
-        <p className="campaign-bar__copy">{campaignCharacters.length} {campaignCharacters.length === 1 ? 'player' : 'players'} · shared spell, item, and ability libraries</p>
+        <p className="campaign-bar__copy">{campaignCharacters.length} {campaignCharacters.length === 1 ? 'character' : 'characters'} · shared spell, item, and ability libraries</p>
         <div className="campaign-bar__actions">
           <Button variant="secondary" onClick={() => setEditor({ kind: 'campaign' })}><Plus size={17} /> New campaign</Button>
           <Button variant="ghost" disabled={!selectedCampaign} onClick={() => selectedCampaign && setEditor({ kind: 'campaign', campaign: selectedCampaign })}><Edit3 size={16} /> Rename</Button>
@@ -584,7 +647,9 @@ export function DmDashboard({
             <EmptyState icon={<Users />} title={`Add a player to ${selectedCampaign.name}`} message="Give them a username, one-time activation code, and starting character details." action={<Button onClick={() => setEditor({ kind: 'create-character' })}><Plus size={18} /> Create player</Button>} />
           ) : (
             <div className="player-admin-grid">
-              {campaignCharacters.map((character) => (
+              {campaignCharacters.map((character) => {
+                const accountCharacterCount = accountCharactersFor(character).length
+                return (
                 <article className="player-admin-card" key={character.id}>
                   <div className="player-avatar">{initials(character.name)}</div>
                   <div className="player-admin-card__identity">
@@ -594,16 +659,19 @@ export function DmDashboard({
                   </div>
                   <dl className="player-admin-card__details">
                     <div><dt>Username</dt><dd>{character.login_username}</dd></div>
+                    <div><dt>Account</dt><dd>{accountCharacterCount} {accountCharacterCount === 1 ? 'character' : 'characters'}</dd></div>
                     <div><dt>Preparation</dt><dd>{character.preparation_unlocked ? 'Unlocked' : 'Locked'}</dd></div>
                   </dl>
                   <div className="player-admin-card__actions">
                     <Button variant="secondary" onClick={() => setEditor({ kind: 'edit-character', character })}><Edit3 size={16} /> Edit</Button>
-                    <Button variant="ghost" onClick={() => setEditor({ kind: 'player-access', character })}><KeyRound size={16} /> {character.user_id ? 'Reset login' : 'Access setup'}</Button>
+                    <Button variant="ghost" onClick={() => setEditor({ kind: 'add-account-character', accountCharacter: character })}><UserPlus size={16} /> Add character</Button>
+                    <Button variant="ghost" onClick={() => setEditor({ kind: 'player-access', character })}><KeyRound size={16} /> {character.user_id ? accountCharacterCount > 1 ? 'Reset account' : 'Reset login' : 'Access setup'}</Button>
                     <Button variant="ghost" onClick={() => { setSelectedCharacterId(character.id); setTab('spells') }}><BookOpenText size={16} /> Cards</Button>
                     <Button variant="ghost" className="danger-text" onClick={() => void deleteCharacterRow(character)}><Trash2 size={16} /> Delete</Button>
                   </div>
                 </article>
-              ))}
+                )
+              })}
             </div>
           )}
         </section>
@@ -853,22 +921,50 @@ export function DmDashboard({
 
       {editor?.kind === 'campaign' && <Modal title={editor.campaign ? `Rename ${editor.campaign.name}` : 'Create a campaign'} description="Campaigns separate player rosters. Spells, magic items, and abilities stay shared." onClose={() => setEditor(null)}><CampaignForm campaign={editor.campaign} busy={busy} onCancel={() => setEditor(null)} onSubmit={(name) => void saveCampaign(name)} /></Modal>}
       {editor?.kind === 'create-character' && <Modal title="Add a player" description="They will use the username and activation code for first-time setup." onClose={() => setEditor(null)} wide><CreateCharacterForm campaigns={campaigns} initialCampaignId={selectedCampaignId} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => void act(() => createCharacter(input).then(() => undefined), `${input.characterName} created.`)} /></Modal>}
+      {editor?.kind === 'add-account-character' && (
+        <Modal
+          title={`Add a character for ${editor.accountCharacter.login_username}`}
+          description="The new character will use this player's existing account. No second login or activation code is needed."
+          onClose={() => setEditor(null)}
+          wide
+        >
+          <AddAccountCharacterForm
+            accountCharacter={editor.accountCharacter}
+            campaigns={campaigns}
+            initialCampaignId={campaigns.find((campaign) => campaign.id !== editor.accountCharacter.campaign_id)?.id ?? editor.accountCharacter.campaign_id}
+            busy={busy}
+            onCancel={() => setEditor(null)}
+            onSubmit={(input) => void act(
+              () => addCharacterToAccount({
+                accountCharacterId: editor.accountCharacter.id,
+                ...input,
+              }).then(() => undefined),
+              `${input.characterName} added to ${editor.accountCharacter.login_username}'s account.`,
+            )}
+          />
+        </Modal>
+      )}
       {editor?.kind === 'edit-character' && <Modal title={`Edit ${editor.character.name}`} description="Automatic limits update when class or level changes unless you set an override." onClose={() => setEditor(null)} wide><CharacterEditor character={editor.character} campaigns={campaigns} busy={busy} onCancel={() => setEditor(null)} onSubmit={(changes) => void act(() => updateCharacter(editor.character.id, changes), `${changes.name} updated.`)} /></Modal>}
       {editor?.kind === 'player-access' && (
         <Modal
-          title={editor.character.user_id ? `Reset ${editor.character.name}'s login` : `Update ${editor.character.name}'s access`}
-          description={editor.character.user_id ? 'They will reactivate through First-time setup and choose a new private password.' : 'Set the username and one-time code they will use for First-time setup.'}
+          title={editor.character.user_id
+            ? accountCharactersFor(editor.character).length > 1
+              ? `Reset ${editor.character.login_username}'s account`
+              : `Reset ${editor.character.name}'s login`
+            : `Update ${editor.character.login_username}'s access`}
+          description={editor.character.user_id ? 'They will reactivate once through First-time setup and choose a new private password.' : 'Set the shared username and one-time code they will use for First-time setup.'}
           onClose={() => setEditor(null)}
         >
           <PlayerAccessForm
             character={editor.character}
+            accountCharacterCount={accountCharactersFor(editor.character).length}
             busy={busy}
             onCancel={() => setEditor(null)}
             onSubmit={(username, code) => void act(
               () => resetPlayerLogin(editor.character.id, username, code),
               editor.character.user_id
-                ? `${editor.character.name}'s login was reset. Give them the username and new one-time code.`
-                : `${editor.character.name}'s access details were updated.`,
+                ? `${editor.character.login_username}'s account was reset. Give them the username and new one-time code.`
+                : `${editor.character.login_username}'s access details were updated.`,
             )}
           />
         </Modal>
