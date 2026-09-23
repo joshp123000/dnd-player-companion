@@ -1,5 +1,5 @@
-import { BookMarked, BookOpen, Gem, LockKeyhole, RotateCcw, Save, Search, SearchX, WandSparkles, Zap } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { BookMarked, BookOpen, Gem, LockKeyhole, RefreshCw, RotateCcw, Save, Search, SearchX, WandSparkles, Zap } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AbilityCard } from '../components/AbilityCard'
 import { MagicItemCard } from '../components/MagicItemCard'
 import { SpellCard } from '../components/SpellCard'
@@ -17,6 +17,7 @@ import {
   parseClassAssignmentKey,
   sharedSpellSlots,
 } from '../lib/multiclass'
+import { useRealtimeRefresh } from '../lib/realtime'
 import { classLabel, selectionLabel } from '../lib/rules'
 import { setsMatch, spellSelectionChanges, toggleSetValue } from '../lib/spellSelection'
 import type { CharacterSpell, PlayerBundle, Profile, Spell, SpellFilters as FilterValues } from '../types'
@@ -42,8 +43,9 @@ export function PlayerDashboard({
   const [savingSelection, setSavingSelection] = useState(false)
   const [draftSelectedSpellKeys, setDraftSelectedSpellKeys] = useState<Set<string>>(new Set())
   const [prepClassKey, setPrepClassKey] = useState('')
+  const protectDraftRef = useRef(false)
 
-  const load = useCallback(async (showLoader = true, characterId?: string) => {
+  const load = useCallback(async (showLoader = true, characterId?: string, preserveUnsavedDraft = false) => {
     if (showLoader) setLoading(true)
     try {
       const nextBundle = await loadPlayerBundle(profile.id, characterId)
@@ -58,11 +60,13 @@ export function PlayerDashboard({
       setBundle(nextBundle)
       rememberCharacterForSession(profile.id, nextBundle.character.id)
       setEligibleSpells(spells)
-      setDraftSelectedSpellKeys(new Set(
-        nextBundle.spellAssignments
-          .filter((assignment) => assignment.is_prepared && !assignment.always_prepared && classKeys.has(assignment.source_class_key))
-          .map((assignment) => classAssignmentKey(assignment.source_class_key, assignment.spell_id)),
-      ))
+      if (!preserveUnsavedDraft || !protectDraftRef.current) {
+        setDraftSelectedSpellKeys(new Set(
+          nextBundle.spellAssignments
+            .filter((assignment) => assignment.is_prepared && !assignment.always_prepared && classKeys.has(assignment.source_class_key))
+            .map((assignment) => classAssignmentKey(assignment.source_class_key, assignment.spell_id)),
+        ))
+      }
       setPrepClassKey((current) => preparableClassKeys.includes(current) ? current : preparableClassKeys[0] ?? '')
     } catch (error) {
       onError(friendlyError(error))
@@ -81,6 +85,23 @@ export function PlayerDashboard({
     ),
     [bundle],
   )
+  const selectionChanges = spellSelectionChanges(savedSelectedSpellKeys, draftSelectedSpellKeys)
+  const selectionChangeCount = selectionChanges.added.length + selectionChanges.removed.length
+  const hasUnsavedSelection = !setsMatch(savedSelectedSpellKeys, draftSelectedSpellKeys)
+  protectDraftRef.current = hasUnsavedSelection || savingSelection
+
+  const refreshLiveData = useCallback(async () => {
+    await load(
+      false,
+      bundle?.character.id ?? lastCharacterForSession(profile.id),
+      true,
+    )
+  }, [bundle?.character.id, load, profile.id])
+  const { refreshPending } = useRealtimeRefresh({
+    channelName: `campaign-compendium-player-${profile.id}`,
+    onRefresh: refreshLiveData,
+    paused: hasUnsavedSelection || savingSelection,
+  })
 
   if (loading) return <LoadingState label="Opening your character cards…" />
   if (!bundle) {
@@ -148,9 +169,6 @@ export function PlayerDashboard({
   choices.sort((left, right) => left.level - right.level || left.name.localeCompare(right.name))
   const filteredChoices = filterSpells(choices, filters)
   const selectedDraftCount = [...draftSelectedSpellKeys].filter((key) => parseClassAssignmentKey(key).classKey === selectedClassKey).length
-  const selectionChanges = spellSelectionChanges(savedSelectedSpellKeys, draftSelectedSpellKeys)
-  const selectionChangeCount = selectionChanges.added.length + selectionChanges.removed.length
-  const hasUnsavedSelection = !setsMatch(savedSelectedSpellKeys, draftSelectedSpellKeys)
 
   const activeSpellBadge = (spellId: string) => {
     const assignments = activeRowsBySpell.get(spellId) ?? []
@@ -313,6 +331,7 @@ export function PlayerDashboard({
           )}
           <div className="multiclass-rule-note"><strong>Separate class preparation</strong><span>This list and its limit use only your {classLabel(selectedClassKey)} level. Your shared spell slots can still cast or upcast any spell you have prepared.</span></div>
           {!character.preparation_unlocked && <div className="locked-notice"><LockKeyhole size={20} /><div><strong>Prepared spell changes are locked</strong><span>Your DM must open preparation after a Long Rest before you can make changes.</span></div></div>}
+          {refreshPending && <div className="locked-notice" role="status"><RefreshCw size={20} /><div><strong>New card updates are waiting</strong><span>Save or undo your spell changes first. Your current choices will not be overwritten.</span></div></div>}
           <div className={`selection-save-bar ${hasUnsavedSelection ? 'selection-save-bar--dirty' : ''}`}>
             <div><strong>{hasUnsavedSelection ? `${selectionChangeCount} unsaved ${selectionChangeCount === 1 ? 'change' : 'changes'}` : 'Spell choices saved'}</strong><span>{classLabel(selectedClassKey)}: {selectedDraftCount} of {selectedLimits?.preparedSpells ?? 0} selected. Make changes for either class, then save once.</span></div>
             <div className="selection-save-bar__actions">

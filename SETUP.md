@@ -18,13 +18,14 @@ You only need to do the Supabase setup once. After that, changes pushed to `main
    8. `supabase/migrations/202609200007_dm_card_edits.sql`
    9. `supabase/migrations/202609230001_multi_character_accounts.sql`
    10. `supabase/migrations/202609230002_multiclassing.sql`
-   11. `supabase/seed.sql`
+   11. `supabase/migrations/202609230003_live_updates.sql`
+   12. `supabase/seed.sql`
 
 The magic-item migration imports all 258 SRD 5.2.1 items. The final script imports all 339 SRD spells. Both update built-in records without replacing custom cards or changing assignment IDs.
 
 ### Existing installations
 
-For an existing installation that already has the magic-item catalog, run `supabase/migrations/202609230001_multi_character_accounts.sql` to let one login use multiple characters, then run `supabase/migrations/202609230002_multiclassing.sql` for per-class levels and spell preparation. Run `202609200007_dm_card_edits.sql` first if generated-card editing is not installed yet. If it is missing magic items or feats, run `202609200005_phb_feats.sql` and `202609200006_magic_items.sql` first as needed. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
+For an existing installation that already has the magic-item catalog, run `supabase/migrations/202609230001_multi_character_accounts.sql` to let one login use multiple characters, then run `supabase/migrations/202609230002_multiclassing.sql` for per-class levels and spell preparation. Run `supabase/migrations/202609230003_live_updates.sql` last so open DM and player screens update automatically. Run `202609200007_dm_card_edits.sql` first if generated-card editing is not installed yet. If it is missing magic items or feats, run `202609200005_phb_feats.sql` and `202609200006_magic_items.sql` first as needed. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
 
 ## 2. Create the first DM account
 
@@ -80,6 +81,8 @@ The activation code is stored as a one-way hash and is erased after successful u
 
 ## Normal campaign workflow
 
+- Open DM and player screens update quietly when assignments, cards, classes, levels, preparation access, or player selections change. A returning phone or laptop performs one background catch-up after reconnecting.
+- If a player has unsaved spell choices when an update arrives, the app keeps those choices and waits to refresh until the player saves or undoes them.
 - Each player can choose **Account → Compendium style**. Their Classic, Spelljammer, or Tomb of Annihilation selection is saved to their login and follows them between devices.
 - Use the campaign selector above the DM tabs to switch rosters.
 - Choose **New campaign** to add another group. Spells, magic items, and abilities remain shared between every campaign.

@@ -17,7 +17,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AbilityCard } from '../components/AbilityCard'
 import { AbilityEditor } from '../components/AbilityEditor'
 import { CharacterEditor } from '../components/CharacterEditor'
@@ -68,6 +68,7 @@ import { friendlyError, initials } from '../lib/format'
 import { filterSpells } from '../lib/filter'
 import { filterMagicItems, MAGIC_ITEM_RARITIES, magicItemCategories } from '../lib/magicItems'
 import { characterBuildLabel } from '../lib/multiclass'
+import { useRealtimeRefresh } from '../lib/realtime'
 import { CHARACTER_CLASSES, SPELLCASTING_CLASSES, classLabel } from '../lib/rules'
 import { dmSpellStatusLabel, matchesDmSpellView, type DmSpellView } from '../lib/spellAssignments'
 import type { Ability, Campaign, Character, MagicItemFilters, Spell, SpellFilters as FilterValues } from '../types'
@@ -382,8 +383,8 @@ export function DmDashboard({
       : candidate.user_id === null && candidate.login_username === character.login_username
   ))
 
-  const load = useCallback(async (preferredCampaignId?: string) => {
-    setLoading(true)
+  const load = useCallback(async (preferredCampaignId?: string, showLoader = true) => {
+    if (showLoader) setLoading(true)
     try {
       const [campaignRows, characterRows, spellRows, abilityRows] = await Promise.all([
         listCampaigns(),
@@ -405,7 +406,7 @@ export function DmDashboard({
     } catch (error) {
       onError(friendlyError(error))
     } finally {
-      setLoading(false)
+      if (showLoader) setLoading(false)
     }
   }, [onError])
 
@@ -448,6 +449,19 @@ export function DmDashboard({
     setAbilityView('all')
     setMagicItemView('all')
   }, [selectedCharacter])
+
+  const selectedCharacterIdRef = useRef(selectedCharacterId)
+  selectedCharacterIdRef.current = selectedCharacterId
+  const refreshLiveData = useCallback(async () => {
+    await Promise.all([
+      load(undefined, false),
+      loadAssignments(selectedCharacterIdRef.current),
+    ])
+  }, [load, loadAssignments])
+  useRealtimeRefresh({
+    channelName: 'campaign-compendium-dm',
+    onRefresh: refreshLiveData,
+  })
 
   const filteredSpells = useMemo(() => {
     const isWizard = hasCharacterClass(selectedCharacter, 'wizard')
@@ -497,7 +511,7 @@ export function DmDashboard({
     try {
       await operation()
       if (close) setEditor(null)
-      await load()
+      await load(undefined, false)
       await loadAssignments(selectedCharacterId)
       onSuccess(success)
     } catch (error) {
@@ -516,7 +530,7 @@ export function DmDashboard({
         : await createCampaign(name)
       const wasUpdate = Boolean(editor.campaign)
       setEditor(null)
-      await load(savedCampaign.id)
+      await load(savedCampaign.id, false)
       onSuccess(wasUpdate ? `${savedCampaign.name} updated.` : `${savedCampaign.name} created.`)
     } catch (error) {
       onError(friendlyError(error))
@@ -539,7 +553,7 @@ export function DmDashboard({
     setBusy(true)
     try {
       await deleteCampaign(campaign.id)
-      await load()
+      await load(undefined, false)
       onSuccess(`${campaign.name} deleted.`)
     } catch (error) {
       onError(friendlyError(error))
