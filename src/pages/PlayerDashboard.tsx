@@ -63,7 +63,12 @@ export function PlayerDashboard({
       if (!preserveUnsavedDraft || !protectDraftRef.current) {
         setDraftSelectedSpellKeys(new Set(
           nextBundle.spellAssignments
-            .filter((assignment) => assignment.is_prepared && !assignment.always_prepared && classKeys.has(assignment.source_class_key))
+            .filter((assignment) => (
+              assignment.is_prepared
+              && !assignment.always_prepared
+              && (assignment.spell?.level ?? 0) > 0
+              && classKeys.has(assignment.source_class_key)
+            ))
             .map((assignment) => classAssignmentKey(assignment.source_class_key, assignment.spell_id)),
         ))
       }
@@ -80,7 +85,12 @@ export function PlayerDashboard({
   const savedSelectedSpellKeys = useMemo(
     () => new Set(
       bundle?.spellAssignments
-        .filter((assignment) => assignment.is_prepared && !assignment.always_prepared && assignment.source_class_key !== 'dm')
+        .filter((assignment) => (
+          assignment.is_prepared
+          && !assignment.always_prepared
+          && (assignment.spell?.level ?? 0) > 0
+          && assignment.source_class_key !== 'dm'
+        ))
         .map((assignment) => classAssignmentKey(assignment.source_class_key, assignment.spell_id)) ?? [],
     ),
     [bundle],
