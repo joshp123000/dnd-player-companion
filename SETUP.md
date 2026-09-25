@@ -19,13 +19,14 @@ You only need to do the Supabase setup once. After that, changes pushed to `main
    9. `supabase/migrations/202609230001_multi_character_accounts.sql`
    10. `supabase/migrations/202609230002_multiclassing.sql`
    11. `supabase/migrations/202609230003_live_updates.sql`
-   12. `supabase/seed.sql`
+   12. `supabase/migrations/202609250001_fix_ability_assignment_sort_order.sql`
+   13. `supabase/seed.sql`
 
 The magic-item migration imports all 258 SRD 5.2.1 items. The final script imports all 339 SRD spells. Both update built-in records without replacing custom cards or changing assignment IDs.
 
 ### Existing installations
 
-For an existing installation that already has the magic-item catalog, run `supabase/migrations/202609230001_multi_character_accounts.sql` to let one login use multiple characters, then run `supabase/migrations/202609230002_multiclassing.sql` for per-class levels and spell preparation. Run `supabase/migrations/202609230003_live_updates.sql` last so open DM and player screens update automatically. Run `202609200007_dm_card_edits.sql` first if generated-card editing is not installed yet. If it is missing magic items or feats, run `202609200005_phb_feats.sql` and `202609200006_magic_items.sql` first as needed. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
+For an existing installation that already has the magic-item catalog, run `supabase/migrations/202609230001_multi_character_accounts.sql` to let one login use multiple characters, then run `supabase/migrations/202609230002_multiclassing.sql` for per-class levels and spell preparation. Run `supabase/migrations/202609230003_live_updates.sql` so open DM and player screens update automatically, followed by `supabase/migrations/202609250001_fix_ability_assignment_sort_order.sql` so built-in feats and magic items can always be assigned. Run `202609200007_dm_card_edits.sql` first if generated-card editing is not installed yet. If it is missing magic items or feats, run `202609200005_phb_feats.sql` and `202609200006_magic_items.sql` first as needed. If an older installation is missing campaign groups, account recovery, Artificer support, or class features, run the missing migrations in the numbered order above. Every migration preserves existing players, custom ability cards, and card assignments.
 
 ## 2. Create the first DM account
 
