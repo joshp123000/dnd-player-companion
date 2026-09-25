@@ -333,4 +333,55 @@ describe('PlayerDashboard card search', () => {
 
     expect(apiMocks.playerToggleSpell).toHaveBeenCalledWith(character.id, clericSpell.id, 'cleric', true)
   })
+
+  it('does not count prepared cantrip assignments against a Wizard preparation limit', async () => {
+    const wizardCharacter: Character = {
+      ...character,
+      class_key: 'wizard',
+      level: 8,
+      preparation_unlocked: true,
+    }
+    const wizardCantrips = Array.from({ length: 6 }, (_, index): Spell => ({
+      ...spell,
+      id: `wizard-cantrip-${index + 1}`,
+      slug: `wizard-cantrip-${index + 1}`,
+      name: `Wizard Cantrip ${index + 1}`,
+    }))
+    const wizardBundle: PlayerBundle = {
+      ...bundle,
+      character: wizardCharacter,
+      availableCharacters: [wizardCharacter],
+      progression: {
+        class_key: 'wizard', level: 8, cantrips: 4, prepared_spells: 11, max_spell_level: 4, selection_mode: 'spellbook',
+      },
+      classLevels: [{
+        id: 'wizard-level', character_id: wizardCharacter.id, class_key: 'wizard', class_level: 8, subclass: null, is_primary: true,
+        max_cantrips_override: null, max_prepared_override: null, max_spell_level_override: null, created_at: '', updated_at: '',
+      }],
+      progressions: [{
+        class_key: 'wizard', level: 8, cantrips: 4, prepared_spells: 11, max_spell_level: 4, selection_mode: 'spellbook',
+      }],
+      spellAssignments: wizardCantrips.map((cantrip, index) => ({
+        id: `wizard-cantrip-assignment-${index + 1}`,
+        character_id: wizardCharacter.id,
+        spell_id: cantrip.id,
+        source_class_key: 'wizard',
+        in_collection: true,
+        is_prepared: true,
+        always_prepared: false,
+        assigned_by_dm: true,
+        notes: null,
+        spell: cantrip,
+      })),
+      abilities: [],
+    }
+    apiMocks.loadPlayerBundle.mockResolvedValue(wizardBundle)
+    apiMocks.listEligibleSpells.mockResolvedValue(wizardCantrips)
+
+    render(<PlayerDashboard profile={profile} onError={vi.fn()} onSuccess={vi.fn()} />)
+
+    expect(await screen.findByLabelText('Wizard Prepared from spellbook: 0 of 11')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: 'Prepare' }))
+    expect(screen.getByText('Wizard: 0 of 11 selected. Make changes for either class, then save once.')).toBeInTheDocument()
+  })
 })
