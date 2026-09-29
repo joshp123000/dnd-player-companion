@@ -1,4 +1,4 @@
-import type { SpellFilters } from '../types'
+import type { SpellFilters, SpellSortMode } from '../types'
 import { matchesSpellSearch, type SearchableSpellCard } from './cardSearch'
 
 export const filterSpells = <T extends SearchableSpellCard>(
@@ -13,3 +13,12 @@ export const filterSpells = <T extends SearchableSpellCard>(
     return true
   })
 }
+
+export const sortSpells = <T extends Pick<SearchableSpellCard, 'level' | 'name'>>(
+  spells: T[],
+  mode: SpellSortMode,
+) => [...spells].sort((left, right) => (
+  mode === 'name'
+    ? left.name.localeCompare(right.name) || left.level - right.level
+    : left.level - right.level || left.name.localeCompare(right.name)
+))
