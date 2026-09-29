@@ -9,7 +9,7 @@ import { listEligibleSpells, loadPlayerBundle, playerToggleSpell } from '../lib/
 import { matchesAbilitySearch } from '../lib/cardSearch'
 import { lastCharacterForSession, rememberCharacterForSession } from '../lib/characterSession'
 import { friendlyError } from '../lib/format'
-import { filterSpells } from '../lib/filter'
+import { filterSpells, sortSpells } from '../lib/filter'
 import {
   characterBuildLabel,
   classAssignmentKey,
@@ -20,7 +20,7 @@ import {
 import { useRealtimeRefresh } from '../lib/realtime'
 import { classLabel, selectionLabel } from '../lib/rules'
 import { setsMatch, spellSelectionChanges, toggleSetValue } from '../lib/spellSelection'
-import type { CharacterSpell, PlayerBundle, Profile, Spell, SpellFilters as FilterValues } from '../types'
+import type { CharacterSpell, PlayerBundle, Profile, Spell, SpellFilters as FilterValues, SpellSortMode } from '../types'
 
 type PlayerTab = 'cards' | 'spells' | 'items' | 'abilities' | 'choices'
 
@@ -39,6 +39,7 @@ export function PlayerDashboard({
   const [eligibleSpells, setEligibleSpells] = useState<Spell[]>([])
   const [tab, setTab] = useState<PlayerTab>('cards')
   const [filters, setFilters] = useState<FilterValues>(initialFilters)
+  const [spellSort, setSpellSort] = useState<SpellSortMode>('level')
   const [loading, setLoading] = useState(true)
   const [savingSelection, setSavingSelection] = useState(false)
   const [draftSelectedSpellKeys, setDraftSelectedSpellKeys] = useState<Set<string>>(new Set())
@@ -144,7 +145,7 @@ export function PlayerDashboard({
       assignments: assignments.filter((assignment) => assignment.always_prepared || assignment.is_prepared),
     }))
     .filter((row): row is { spell: Spell; assignments: CharacterSpell[] } => Boolean(row.spell && row.assignments.length > 0))
-  const filteredActive = filterSpells(activeSpellRows.map((row) => row.spell), filters)
+  const filteredActive = sortSpells(filterSpells(activeSpellRows.map((row) => row.spell), filters), spellSort)
   const activeRowsBySpell = new Map(activeSpellRows.map((row) => [row.spell.id, row.assignments]))
 
   const filteredMagicItemAssignments = magicItemAssignments.filter(
@@ -176,8 +177,7 @@ export function PlayerDashboard({
   if (selectedLimits?.selectionMode === 'spellbook') {
     choices = choices.filter((spell) => selectedAssignmentIds.has(spell.id))
   }
-  choices.sort((left, right) => left.level - right.level || left.name.localeCompare(right.name))
-  const filteredChoices = filterSpells(choices, filters)
+  const filteredChoices = sortSpells(filterSpells(choices, filters), spellSort)
   const selectedDraftCount = [...draftSelectedSpellKeys].filter((key) => parseClassAssignmentKey(key).classKey === selectedClassKey).length
 
   const activeSpellBadge = (spellId: string) => {
@@ -268,7 +268,15 @@ export function PlayerDashboard({
         ]}
       />
 
-      {(tab === 'spells' || tab === 'choices') && <SpellFilters value={filters} onChange={setFilters} hideClass />}
+      {(tab === 'spells' || tab === 'choices') && (
+        <SpellFilters
+          value={filters}
+          onChange={setFilters}
+          hideClass
+          sort={spellSort}
+          onSortChange={setSpellSort}
+        />
+      )}
 
       {(tab === 'cards' || tab === 'items' || tab === 'abilities') && (
         <label className="search-input standalone-search">
