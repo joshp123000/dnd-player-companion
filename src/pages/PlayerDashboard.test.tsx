@@ -179,12 +179,46 @@ describe('PlayerDashboard card search', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Spells' }))
     expect(screen.getByLabelText('Search spells')).toBeInTheDocument()
+    expect(screen.getByLabelText('Sort spells')).toHaveValue('level')
 
     fireEvent.click(screen.getByRole('tab', { name: 'Magic items' }))
     expect(screen.getByLabelText('Search magic items')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Abilities' }))
     expect(screen.getByLabelText('Search abilities')).toBeInTheDocument()
+  })
+
+  it('lets players sort active spell cards by level or name', async () => {
+    const higherLevelSpell: Spell = {
+      ...spell,
+      id: 'absorb-elements-id',
+      slug: 'absorb-elements',
+      name: 'Absorb Elements',
+      level: 3,
+      cantrip_upgrade: null,
+    }
+    apiMocks.loadPlayerBundle.mockResolvedValue({
+      ...bundle,
+      spellAssignments: [
+        bundle.spellAssignments[0],
+        {
+          ...bundle.spellAssignments[0],
+          id: 'higher-level-assignment',
+          spell_id: higherLevelSpell.id,
+          spell: higherLevelSpell,
+        },
+      ],
+    })
+    apiMocks.listEligibleSpells.mockResolvedValue([higherLevelSpell, spell])
+
+    render(<PlayerDashboard profile={profile} onError={vi.fn()} onSuccess={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Spells' }))
+    const shownNames = () => screen.getAllByText(/^(Absorb Elements|Fire Bolt)$/).map((element) => element.textContent)
+    expect(shownNames()).toEqual(['Fire Bolt', 'Absorb Elements'])
+
+    fireEvent.change(screen.getByLabelText('Sort spells'), { target: { value: 'name' } })
+    expect(shownNames()).toEqual(['Absorb Elements', 'Fire Bolt'])
   })
 
   it('switches between characters and campaigns on one account', async () => {
@@ -321,6 +355,7 @@ describe('PlayerDashboard card search', () => {
     render(<PlayerDashboard profile={profile} onError={vi.fn()} onSuccess={vi.fn()} />)
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Prepare' }))
+    expect(screen.getByLabelText('Sort spells')).toBeInTheDocument()
     expect(screen.getByText('Paladin Oath')).toBeInTheDocument()
     expect(screen.queryByText('Cleric Prayer')).not.toBeInTheDocument()
 
