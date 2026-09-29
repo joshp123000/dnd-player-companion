@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterSpells } from './filter'
+import { filterSpells, sortSpells } from './filter'
 
 const spells = [
   { name: 'Fireball', level: 3, classes: ['sorcerer', 'wizard'], school: 'evocation', description: 'A fiery explosion.' },
@@ -20,5 +20,14 @@ describe('spell filtering', () => {
   it('searches spell details as well as names', () => {
     expect(filterSpells(spells, { search: 'fiery explosion', level: 'all', classKey: 'all', school: 'all' }))
       .toEqual([spells[0]])
+  })
+
+  it('sorts spells by level or alphabetically without changing the original list', () => {
+    expect(sortSpells(spells, 'level').map((spell) => spell.name))
+      .toEqual(['Mage Hand', 'Cure Wounds', 'Fireball'])
+    expect(sortSpells(spells, 'name').map((spell) => spell.name))
+      .toEqual(['Cure Wounds', 'Fireball', 'Mage Hand'])
+    expect(spells.map((spell) => spell.name))
+      .toEqual(['Fireball', 'Mage Hand', 'Cure Wounds'])
   })
 })
