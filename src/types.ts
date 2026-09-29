@@ -189,6 +189,8 @@ export interface SpellFilters {
   school: string | 'all'
 }
 
+export type SpellSortMode = 'level' | 'name'
+
 export type ToastTone = 'success' | 'error' | 'info'
 export interface ToastMessage {
   id: number
