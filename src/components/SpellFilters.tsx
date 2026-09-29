@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react'
-import type { SpellFilters as SpellFilterValues } from '../types'
+import type { SpellFilters as SpellFilterValues, SpellSortMode } from '../types'
 import { SPELLCASTING_CLASSES, classLabel } from '../lib/rules'
 import { Input, Select } from './ui'
 
@@ -18,10 +18,14 @@ export function SpellFilters({
   value,
   onChange,
   hideClass = false,
+  sort,
+  onSortChange,
 }: {
   value: SpellFilterValues
   onChange: (value: SpellFilterValues) => void
   hideClass?: boolean
+  sort?: SpellSortMode
+  onSortChange?: (value: SpellSortMode) => void
 }) {
   return (
     <div className="filters">
@@ -67,6 +71,16 @@ export function SpellFilters({
         <option value="all">All schools</option>
         {SCHOOLS.map((school) => <option value={school} key={school}>{classLabel(school)}</option>)}
       </Select>
+      {sort && onSortChange && (
+        <Select
+          aria-label="Sort spells"
+          value={sort}
+          onChange={(event) => onSortChange(event.target.value as SpellSortMode)}
+        >
+          <option value="level">Level (low to high)</option>
+          <option value="name">Name (A–Z)</option>
+        </Select>
+      )}
     </div>
   )
 }
