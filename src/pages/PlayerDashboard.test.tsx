@@ -323,6 +323,8 @@ describe('PlayerDashboard card search', () => {
       level: 2,
       classes: ['paladin'],
       cantrip_upgrade: null,
+      source_type: 'custom',
+      source_label: 'Homebrew',
     }
     const multiclassBundle: PlayerBundle = {
       ...bundle,
