@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Clock3, Focus, Sparkles } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronUp, Clock3, Focus, Sparkles } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -57,6 +57,11 @@ export function SpellCard({
         {spell.concentration && (
           <span>
             <Sparkles size={15} /> Concentration
+          </span>
+        )}
+        {spell.ritual && (
+          <span>
+            <BookOpen size={15} /> Ritual
           </span>
         )}
       </div>
