@@ -61,6 +61,12 @@ describe('SpellCard', () => {
     expect(screen.queryByText('Stale slot text.')).not.toBeInTheDocument()
   })
 
+  it('shows a ritual marker in the compact quick facts', () => {
+    render(<SpellCard spell={{ ...spell, ritual: true }} />)
+
+    expect(screen.getByText('Ritual')).toBeInTheDocument()
+  })
+
   it('labels a generated card after a DM correction', () => {
     render(<SpellCard spell={{ ...spell, dm_edited: true }} />)
 
